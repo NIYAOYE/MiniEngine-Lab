@@ -3,12 +3,12 @@
 > 跨会话进度索引。**每次有实质进展时更新本文件**:勾选里程碑、更新"当前状态"和"下一步"、追加决策记录。
 
 - **最后更新**:2026-06-17
-- **当前阶段**:设计完成,尚未开始编码(M0 未启动)
+- **当前阶段**:M0 地基完成(Core + Platform 计时/文件系统 + 单测全绿),下一步 M1 精灵上屏
 - **方向**:2D/2.5D 农场模拟游戏引擎(C++/DX12 + Win32),引擎能力抽象为受控、可验证的 Agent-ready Tool API
 
 ## 一句话现状
 
-架构设计已确认并定稿(融合方向:2D/2.5D 农场模拟 + Agent-ready Tool API),下一步是为 **M0 地基**编写实现计划(`writing-plans`)后开始编码。当前仓库仅有文档,无源码。
+M0 地基已完成:CMake 模块化骨架、Core(2D 数学/Handle/Log/Assert)、Platform(Time/FileSystem)均跨平台并通过 doctest 单测(32 用例 / 94 断言全绿)。下一步为 M1 写实现计划(含 Win32 Window/Input + DX12 最小上屏)。
 
 ## 文档索引
 
@@ -25,7 +25,7 @@
 | 里程碑 | 状态 | 说明 |
 |--------|------|------|
 | 架构设计 | ☑ | 已确认并提交(融合:2D/2.5D 农场 + Agent-ready Tool API) |
-| **M0 地基** | ☐ | CMake 骨架 + Core(2D Math/Log/Handle)+ Platform(窗口/输入/计时)+ 单测 |
+| **M0 地基** | ☑ | CMake 骨架 + Core(2D Math/Log/Handle/Assert)+ Platform(计时/文件系统)+ doctest 单测;Win32 窗口/输入推迟到 M1 |
 | M1 精灵上屏 | ☐ | RHI 最小可用(Device/SwapChain/CmdList/Fence/PSO)→ 清屏 → 带纹理精灵 |
 | M2 批渲染 + 正交相机 | ☐ | SpriteBatch 合批 + 正交相机 + 多精灵 |
 | M3 瓦片地图 | ☐ | Tileset + TileMap 渲染 + 从 JSON 加载地图 |
@@ -55,6 +55,9 @@
 | 2026-06-17 | **融合定调:维度改为 2D/2.5D 农场向** | 目标品类是星露谷式农场模拟;简化渲染/数学/物理 |
 | 2026-06-17 | **去掉 SDL2**,渲染/输入用 DX12 + Win32 | 保留 Agent-ready/DX12 底座 |
 | 2026-06-17 | **农场领域模块(时间/瓦片玩法/NPC 日程)纳入后期里程碑(M8)** | 引擎核心保持通用,领域玩法独立成层 |
+| 2026-06-17 | M0 Core/Platform 跨平台,WSL 可单测;Win32 Window/Input 推迟到 M1 | Core/计时/文件系统不依赖窗口,可即时 TDD;窗口需真实 Windows 验证,与 DX12 上屏合并 |
+| 2026-06-17 | 数学库定为行主序 + 行向量(p' = p*M) | 与 DX12/DirectXMath 同源,降低 M1 接图形 API 的心智负担 |
+| 2026-06-17 | 单测框架选 doctest(FetchContent) | 单头、编译快、API 简洁,契合最小依赖 |
 
 ## 待解决 / 开放问题
 
