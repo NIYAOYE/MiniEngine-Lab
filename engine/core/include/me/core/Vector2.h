@@ -1,5 +1,7 @@
 #pragma once
 
+#include "me/core/Assert.h"
+
 namespace me {
 
 /**
@@ -17,7 +19,10 @@ struct Vector2 {
     Vector2 operator+(const Vector2& r) const { return {x + r.x, y + r.y}; }
     Vector2 operator-(const Vector2& r) const { return {x - r.x, y - r.y}; }
     Vector2 operator*(float s) const { return {x * s, y * s}; }
-    Vector2 operator/(float s) const { return {x / s, y / s}; }
+    Vector2 operator/(float s) const {
+        ME_ASSERT_MSG(s != 0.0f, "Vector2::operator/: 除数为 0");
+        return {x / s, y / s};
+    }
     Vector2 operator-() const { return {-x, -y}; }
 
     Vector2& operator+=(const Vector2& r) { x += r.x; y += r.y; return *this; }

@@ -1,5 +1,6 @@
 #include "me/core/Matrix4x4.h"
 #include "me/core/Vector2.h"
+#include "me/core/Assert.h"
 
 #include <cmath>
 
@@ -41,11 +42,16 @@ Matrix4x4 Matrix4x4::Rotation(float radians) {
 
 Matrix4x4 Matrix4x4::Orthographic(float left, float right, float bottom, float top,
                                   float nearZ, float farZ) {
-    Matrix4x4 r{}; // 全零起步
     const float rl = right - left;
     const float tb = top - bottom;
     const float fn = farZ - nearZ;
 
+    // 不变量:视口宽/高/深必须非零,否则是上层配置错误(会产生 inf/nan 矩阵)
+    ME_ASSERT_MSG(rl != 0.0f, "Orthographic: left 与 right 不能相等");
+    ME_ASSERT_MSG(tb != 0.0f, "Orthographic: bottom 与 top 不能相等");
+    ME_ASSERT_MSG(fn != 0.0f, "Orthographic: nearZ 与 farZ 不能相等");
+
+    Matrix4x4 r{}; // 全零起步
     r.m[0][0] = 2.0f / rl;
     r.m[1][1] = 2.0f / tb;
     r.m[2][2] = 1.0f / fn;
