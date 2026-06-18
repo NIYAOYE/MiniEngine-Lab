@@ -6,6 +6,8 @@ add_library(me_core STATIC
     src/Transform2D.cpp
     src/Rect.cpp
     src/AABB.cpp
+    src/Log.cpp
+    src/Assert.cpp
 )
 
 target_include_directories(me_core PUBLIC include)

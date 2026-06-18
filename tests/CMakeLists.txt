@@ -7,6 +7,7 @@ add_executable(me_tests
     core/test_transform2d.cpp
     core/test_rect_aabb.cpp
     core/test_handle.cpp
+    core/test_log.cpp
 )
 
 target_link_libraries(me_tests PRIVATE doctest::doctest me_core me_platform)
