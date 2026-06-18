@@ -1,6 +1,7 @@
 add_executable(me_tests
     test_main.cpp
     core/test_smoke.cpp
+    core/test_vector2.cpp
 )
 
 target_link_libraries(me_tests PRIVATE doctest::doctest me_core me_platform)
