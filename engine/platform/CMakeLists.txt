@@ -1,5 +1,6 @@
 add_library(me_platform STATIC
     src/Platform.cpp
+    src/Time.cpp
 )
 
 target_include_directories(me_platform PUBLIC include)
