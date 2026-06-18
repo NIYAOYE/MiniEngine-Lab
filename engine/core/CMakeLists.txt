@@ -4,6 +4,8 @@ add_library(me_core STATIC
     src/Vector3.cpp
     src/Matrix4x4.cpp
     src/Transform2D.cpp
+    src/Rect.cpp
+    src/AABB.cpp
 )
 
 target_include_directories(me_core PUBLIC include)

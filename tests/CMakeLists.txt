@@ -5,6 +5,7 @@ add_executable(me_tests
     core/test_vector34.cpp
     core/test_matrix.cpp
     core/test_transform2d.cpp
+    core/test_rect_aabb.cpp
 )
 
 target_link_libraries(me_tests PRIVATE doctest::doctest me_core me_platform)
