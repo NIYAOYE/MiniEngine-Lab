@@ -19,4 +19,7 @@ std::optional<std::vector<std::uint8_t>> ReadBinaryFile(const std::string& path)
 /** @brief 写文本文件(覆盖);成功返回 true。 */
 bool WriteTextFile(const std::string& path, const std::string& content);
 
+/** @brief 写二进制文件(覆盖);成功返回 true。 */
+bool WriteBinaryFile(const std::string& path, const std::vector<std::uint8_t>& bytes);
+
 } // namespace me::platform

@@ -46,4 +46,14 @@ bool WriteTextFile(const std::string& path, const std::string& content) {
     return static_cast<bool>(out);
 }
 
+bool WriteBinaryFile(const std::string& path, const std::vector<std::uint8_t>& bytes) {
+    std::ofstream out(path, std::ios::binary | std::ios::trunc);
+    if (!out) {
+        return false;
+    }
+    out.write(reinterpret_cast<const char*>(bytes.data()),
+              static_cast<std::streamsize>(bytes.size()));
+    return static_cast<bool>(out);
+}
+
 } // namespace me::platform
