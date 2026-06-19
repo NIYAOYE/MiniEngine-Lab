@@ -25,6 +25,12 @@ ctest --test-dir build -C Debug --output-on-failure   # 含 WARP 像素回读 GP
 .\build\bin\Debug\sandbox.exe                          # 目视:精灵上屏 + WASD 平移
 ```
 
+> **多配置生成器(Visual Studio)必须指定配置。** VS 在一个构建目录里同时容纳 Debug/Release,
+> 所以构建要带 `--config Debug`、测试要带 `-C Debug`;两者缺一会报
+> `Test not available without configuration. (Missing "-C <config>"?)`。
+> 而 Linux/WSL 默认的 Makefile/Ninja 是单配置生成器(配置时即定死),无需 `-C`——
+> 这也是上面"跨平台逻辑"一节的 `ctest` 不带 `-C` 的原因。
+
 ## 模块
 - `engine/core`(`me_core`):2D 数学、句柄、日志、断言。
 - `engine/platform`(`me_platform`):计时、文件系统;Win32 窗口/输入(仅 Windows)。

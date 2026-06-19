@@ -23,8 +23,8 @@ using namespace me;
 namespace {
 constexpr int kWindowWidth = 1280;
 constexpr int kWindowHeight = 720;
-constexpr float kSpritePixels = 256.0f; // 精灵边长(像素)
-constexpr float kMoveSpeedPixels = 8.0f; // 每帧平移步长
+constexpr float kSpritePixels = 64.0f; // 精灵边长(像素)
+constexpr float kMoveSpeedPixels = 4.0f; // 每帧平移步长
 
 void Transition(ID3D12GraphicsCommandList* cmd, ID3D12Resource* res,
                 D3D12_RESOURCE_STATES from, D3D12_RESOURCE_STATES to) {
