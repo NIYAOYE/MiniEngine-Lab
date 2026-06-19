@@ -3,12 +3,12 @@
 > 跨会话进度索引。**每次有实质进展时更新本文件**:勾选里程碑、更新"当前状态"和"下一步"、追加决策记录。
 
 - **最后更新**:2026-06-19
-- **当前阶段**:M1 精灵上屏完成,下一步 M2 批渲染 + 正交相机
+- **当前阶段**:M2 批渲染 + 正交相机完成,下一步 M3 瓦片地图
 - **方向**:2D/2.5D 农场模拟游戏引擎(C++/DX12 + Win32),引擎能力抽象为受控、可验证的 Agent-ready Tool API
 
 ## 一句话现状
 
-M1 精灵上屏已完成:Win32 Window/Input + RHI(GpuDevice/SwapChain/CommandContext/Fence/DescriptorHeap/GpuBuffer/GpuTexture/Shader/PSO)+ stb_image 纹理解码 + SpriteRenderer(根签名+PSO+单位四边形,经 MVP 绘制)。跨平台逻辑在 WSL 用 doctest 红绿;DX12/GPU 正确性由 WARP 软件适配器 + 离屏像素回读自动化把关(me_gpu_tests:设备/围栏、纹理上传往返、带纹理精灵渲染),并经 sandbox 真机目视确认(开窗、贴图正立、WASD 平移、ESC 退出)。下一步为 M2 写实现计划。
+M1 精灵上屏已完成:Win32 Window/Input + RHI(GpuDevice/SwapChain/CommandContext/Fence/DescriptorHeap/GpuBuffer/GpuTexture/Shader/PSO)+ stb_image 纹理解码 + SpriteRenderer(根签名+PSO+单位四边形,经 MVP 绘制)。跨平台逻辑在 WSL 用 doctest 红绿;DX12/GPU 正确性由 WARP 软件适配器 + 离屏像素回读自动化把关(me_gpu_tests:设备/围栏、纹理上传往返、带纹理精灵渲染),并经 sandbox 真机目视确认(开窗、贴图正立、WASD 平移、ESC 退出)。M2 批渲染 + 正交相机已完成:SpriteBatch 按纹理合批 + OrthographicCamera + 8×5 多精灵 sandbox;WARP 多精灵/色调/srcRect 像素回读 + 相机 doctest + sandbox 目视验证。
 
 ## 文档索引
 
@@ -27,7 +27,7 @@ M1 精灵上屏已完成:Win32 Window/Input + RHI(GpuDevice/SwapChain/CommandCon
 | 架构设计 | ☑ | 已确认并提交(融合:2D/2.5D 农场 + Agent-ready Tool API) |
 | **M0 地基** | ☑ | CMake 骨架 + Core(2D Math/Log/Handle/Assert)+ Platform(计时/文件系统)+ doctest 单测;Win32 窗口/输入推迟到 M1 |
 | **M1 精灵上屏** | ☑ | Win32 Window/Input + RHI(Device/SwapChain/CmdList/Fence/PSO)+ stb_image 纹理 + SpriteRenderer;WARP 像素回读 + sandbox 目视验证 |
-| M2 批渲染 + 正交相机 | ☐ | SpriteBatch 合批 + 正交相机 + 多精灵 |
+| **M2 批渲染 + 正交相机** | ☑ | SpriteBatch 按纹理合批 + OrthographicCamera + 多精灵;WARP 多精灵/色调/srcRect 像素回读 + 相机 doctest + sandbox 目视 |
 | M3 瓦片地图 | ☐ | Tileset + TileMap 渲染 + 从 JSON 加载地图 |
 | M4 Scene + 组件 | ☐ | Entity/Transform2D + Component + System |
 | M5 Command 中枢 | ☐ | ICommand + CommandStack + Undo/Redo |
@@ -38,9 +38,9 @@ M1 精灵上屏已完成:Win32 Window/Input + RHI(GpuDevice/SwapChain/CommandCon
 
 ## 下一步行动
 
-1. 选定起点:从 **M0 地基**顺序推进,或优先验证 **ToolAPI 主线(M5 + M6)**。
-2. 对所选里程碑调用 `writing-plans` 生成实现计划。
-3. 按计划实现并回写本文件进度。
+1. 对 **M3 瓦片地图** 调用 `writing-plans` 生成实现计划(Tileset + TileMap 渲染 + 从 JSON 加载地图)。
+2. 按计划实现并回写本文件进度。
+3. ToolAPI 主线(M5 + M6)为后续受控编辑能力的重点。
 
 ## 关键决策记录(ADR 摘要)
 
@@ -62,10 +62,15 @@ M1 精灵上屏已完成:Win32 Window/Input + RHI(GpuDevice/SwapChain/CommandCon
 | 2026-06-19 | M1 用系统 DX12(d3d12/dxgi/d3dcompiler),不引入 Agility SDK | 最小依赖,够用即可 |
 | 2026-06-19 | GPU 代码用 WARP 软件适配器 + 离屏像素回读做自动化测试,辅以 sandbox 目视 | 无独显/无窗口环境也能红绿,补足 RHI 不可纯 CPU 单测的空缺 |
 | 2026-06-19 | Windows 侧定义 UNICODE/_UNICODE | 全程用 -W API + 宽字符串,使资源宏(IDC_ARROW)解析为宽字符版本 |
+| 2026-06-19 | 合批策略 = 按纹理指针稳定排序后逐 run 合 drawcall;模型变换 CPU 端烘入顶点 | 合批无法每精灵传根常量,CPU 侧烘入顶点无额外 GPU 开销;稳定排序保持同纹理提交顺序 |
+| 2026-06-19 | 顶点格式 pos+uv+color 一次到位,srcRect 支持图集采样 | color 色调支持 M2 测试用例;srcRect UV 子区域供 M3 瓦片图集复用 |
+| 2026-06-19 | M1 `SpriteRenderer` 退役并入 `SpriteBatch` | 消除重复根签名/PSO/VB 逻辑;单一渲染路径降低维护成本 |
+| 2026-06-19 | 延续上传堆 + 每帧全同步;帧并行(FrameRing)/默认堆迁移推迟到性能里程碑 | M2 目标是合批正确性与相机;提前引入 per-frame fence 会增加调试复杂度,与本里程碑目标无关 |
+| 2026-06-19 | 容量溢出策略 = VB/IB 按高水位自动增长(不静默丢弃) | 静默丢弃会导致渲染缺失难以排查;自动增长保证正确性,性能影响在可接受范围内 |
 
 ## 待解决 / 开放问题
 
 - JSON Schema 校验具体选库或手写,M6 时确定。
 - 瓦片地图是否兼容 Tiled JSON 格式,M3 时确定。
-- 上传堆顶点/纹理为 M1 简化(可读性优先);M2/性能里程碑改默认堆 + 一次性拷贝。
-- M1 每帧 `fence->Flush` 全同步(无帧并行);M2 引入 per-frame 围栏值实现 CPU/GPU 重叠。
+- 上传堆顶点/纹理为 M1 简化(可读性优先);仍延续,推迟到后续性能里程碑(M2 已确认不做默认堆迁移)。
+- M1 每帧 `fence->Flush` 全同步(无帧并行);仍延续,推迟到后续性能里程碑(M2 已确认不做帧并行)。
