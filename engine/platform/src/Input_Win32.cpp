@@ -12,6 +12,8 @@ std::optional<KeyCode> MapPlatformKey(unsigned int vk) {
     case 'A':       return KeyCode::A;
     case 'S':       return KeyCode::S;
     case 'D':       return KeyCode::D;
+    case 'Q':       return KeyCode::Q;
+    case 'E':       return KeyCode::E;
     default:        return std::nullopt;
     }
 }

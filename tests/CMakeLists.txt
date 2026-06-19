@@ -13,8 +13,11 @@ add_executable(me_tests
     platform/test_input.cpp
     rhi/test_rhi_logic.cpp
     assets/test_image.cpp
+    render/test_camera.cpp
 )
 
 target_link_libraries(me_tests PRIVATE doctest::doctest me_core me_platform me_rhi_cpu me_assets)
+
+target_include_directories(me_tests PRIVATE ${CMAKE_SOURCE_DIR}/engine/renderer/include)
 
 add_test(NAME me_tests COMMAND me_tests)

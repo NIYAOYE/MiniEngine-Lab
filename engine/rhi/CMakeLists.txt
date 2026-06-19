@@ -33,6 +33,8 @@ if(WIN32)
             ${CMAKE_SOURCE_DIR}/tests/gpu/test_device_fence.cpp
             ${CMAKE_SOURCE_DIR}/tests/gpu/test_texture_roundtrip.cpp
             ${CMAKE_SOURCE_DIR}/tests/gpu/test_sprite_render.cpp
+            ${CMAKE_SOURCE_DIR}/tests/gpu/test_dynamic_buffer.cpp
+            ${CMAKE_SOURCE_DIR}/tests/gpu/test_sprite_batch.cpp
         )
         target_link_libraries(me_gpu_tests PRIVATE doctest::doctest me_rhi me_rhi_cpu me_renderer)
         add_test(NAME me_gpu_tests COMMAND me_gpu_tests)
