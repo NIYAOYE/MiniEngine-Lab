@@ -103,7 +103,9 @@ TEST_CASE("SpriteBatch 分组:同纹理合 1 次,两纹理 2 次,与提交顺序
                             rt.Get(), kRt, kRt, D3D12_RESOURCE_STATE_RENDER_TARGET);
     auto at = [&](uint32_t x, uint32_t y) { return &px[(y * kRt + x) * 4]; };
     CHECK(at(2, 4)[0] > 200); // 左半红(texA)
+    CHECK(at(2, 4)[1] < 60);  // 左半非绿
     CHECK(at(6, 4)[1] > 200); // 右半绿(texB)
+    CHECK(at(6, 4)[0] < 60);  // 右半非红
 }
 
 TEST_CASE("SpriteBatch srcRect:从 2x2 纹理取左上角 texel") {
