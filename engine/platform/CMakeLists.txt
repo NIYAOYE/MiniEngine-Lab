@@ -2,6 +2,7 @@ add_library(me_platform STATIC
     src/Platform.cpp
     src/Time.cpp
     src/FileSystem.cpp
+    src/Input.cpp
 )
 
 if(WIN32)
