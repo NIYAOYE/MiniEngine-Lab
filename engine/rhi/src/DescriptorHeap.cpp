@@ -1,6 +1,9 @@
 #include "me/rhi/DescriptorHeap.h"
 
+#include <cstdlib>
+
 #include "me/core/Assert.h"
+#include "me/core/Log.h"
 
 namespace me::rhi {
 
@@ -30,6 +33,13 @@ std::unique_ptr<DescriptorHeap> DescriptorHeap::Create(
 Descriptor DescriptorHeap::Allocate() {
     auto slot = m_logic.Allocate();
     ME_ASSERT_MSG(slot.has_value(), "描述符堆已满");
+    if (!slot.has_value()) {
+        // Release(NDEBUG)下 ME_ASSERT 被编译为空操作:此处兜底,避免解引用空
+        // optional 的未定义行为。描述符堆容量在初始化期确定,堆满属编程错误,
+        // 与 ME_HR_CHECK 一致地直接中止(而非返回错误句柄静默继续)。
+        ME_LOG_ERROR("DescriptorHeap 已满(容量不足,属编程错误)");
+        std::abort();
+    }
     const uint64_t offset = m_logic.CpuOffsetBytes(*slot);
 
     Descriptor d{};

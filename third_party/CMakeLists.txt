@@ -10,10 +10,11 @@ FetchContent_MakeAvailable(doctest)
 # 提供 target: doctest::doctest
 
 # stb:单头库集合。仅用 stb_image(贴图解码)。
+# stb 无版本 tag,故钉到一个具体 commit 以保证可复现构建(避免 master 漂移)。
 FetchContent_Declare(
     stb
     GIT_REPOSITORY https://github.com/nothings/stb.git
-    GIT_TAG        master
+    GIT_TAG        31c1ad37456438565541f4919958214b6e762fb4
 )
 FetchContent_MakeAvailable(stb)
 
