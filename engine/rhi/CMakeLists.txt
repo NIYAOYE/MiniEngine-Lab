@@ -7,7 +7,9 @@ target_link_libraries(me_rhi_cpu INTERFACE me_core)
 # DX12 实现层 me_rhi 仅在 Windows 构建(后续任务逐步填充源文件)。
 if(WIN32)
     add_library(me_rhi STATIC
-        src/D3DCommon.cpp  # Task 4 创建;后续任务继续追加源
+        src/D3DCommon.cpp
+        src/GpuDevice.cpp
+        src/Fence.cpp
     )
     target_include_directories(me_rhi PUBLIC include)
     target_compile_features(me_rhi PUBLIC cxx_std_17)
@@ -16,4 +18,15 @@ if(WIN32)
         PRIVATE d3d12 dxgi d3dcompiler dxguid)
     # 让运行时能定位着色器/纹理:把仓库 assets 目录编进宏。
     target_compile_definitions(me_rhi PUBLIC ME_ASSET_DIR="${CMAKE_SOURCE_DIR}/assets")
+
+    # DX12/WARP GPU 测试(像素回读),仅在 ME_BUILD_GPU_TESTS=ON 时构建。
+    if(ME_BUILD_GPU_TESTS)
+        add_executable(me_gpu_tests
+            ${CMAKE_SOURCE_DIR}/tests/gpu/gpu_test_main.cpp
+            ${CMAKE_SOURCE_DIR}/tests/gpu/test_device_fence.cpp
+            # 后续 Task 8/12 追加 test_texture_roundtrip.cpp / test_sprite_render.cpp
+        )
+        target_link_libraries(me_gpu_tests PRIVATE doctest::doctest me_rhi me_rhi_cpu)
+        add_test(NAME me_gpu_tests COMMAND me_gpu_tests)
+    endif()
 endif()
