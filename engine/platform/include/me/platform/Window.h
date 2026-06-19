@@ -36,9 +36,11 @@ public:
     /** @brief 原生窗口句柄(HWND,转为 void*);供 RHI 创建交换链使用。 */
     void* NativeHandle() const;
 
+    // 前置声明公开,定义仍封死在 .cpp(供 .cpp 内的自由 WndProc 访问其成员)。
+    struct Impl;
+
 private:
     Window();
-    struct Impl;
     std::unique_ptr<Impl> m_impl;
 };
 
