@@ -8,6 +8,7 @@ add_library(me_platform STATIC
 if(WIN32)
     target_sources(me_platform PRIVATE
         src/Window_Win32.cpp
+        src/Input_Win32.cpp
     )
 endif()
 

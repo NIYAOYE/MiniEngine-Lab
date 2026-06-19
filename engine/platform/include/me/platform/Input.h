@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstddef>
+#include <optional>
 
 namespace me::platform {
 
@@ -36,3 +37,8 @@ private:
 };
 
 } // namespace me::platform
+
+namespace me::platform::detail {
+/** @brief 平台原生按键码(Win32 VK)→ KeyCode;不关心的键返回 nullopt。 */
+std::optional<KeyCode> MapPlatformKey(unsigned int nativeKey);
+} // namespace me::platform::detail

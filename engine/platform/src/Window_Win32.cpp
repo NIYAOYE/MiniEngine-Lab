@@ -1,4 +1,5 @@
 #include "me/platform/Window.h"
+#include "me/platform/Input.h"
 
 #include <windows.h>
 #include <string>
@@ -23,6 +24,7 @@ struct Window::Impl {
     int width = 0;
     int height = 0;
     bool shouldClose = false;
+    InputState* input = nullptr; // 可选:注册后接收键消息
 };
 
 // 把 HWND 的 userdata 指向 Impl,从而在静态 WndProc 中取回实例状态。
@@ -43,6 +45,18 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpara
         case WM_SIZE:
             impl->width = LOWORD(lparam);
             impl->height = HIWORD(lparam);
+            return 0;
+        case WM_KEYDOWN:
+            if (impl->input && (lparam & (1 << 30)) == 0) { // 过滤自动重复
+                if (auto k = detail::MapPlatformKey(static_cast<unsigned>(wparam)))
+                    impl->input->OnKeyDown(*k);
+            }
+            return 0;
+        case WM_KEYUP:
+            if (impl->input) {
+                if (auto k = detail::MapPlatformKey(static_cast<unsigned>(wparam)))
+                    impl->input->OnKeyUp(*k);
+            }
             return 0;
         }
     }
@@ -99,5 +113,6 @@ bool Window::ShouldClose() const { return m_impl->shouldClose; }
 int Window::Width() const { return m_impl->width; }
 int Window::Height() const { return m_impl->height; }
 void* Window::NativeHandle() const { return static_cast<void*>(m_impl->hwnd); }
+void Window::SetInput(InputState* input) { m_impl->input = input; }
 
 } // namespace me::platform

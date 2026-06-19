@@ -4,6 +4,8 @@
 
 namespace me::platform {
 
+class InputState; // 前置声明:窗口可把键消息馈入键盘状态机
+
 /** @brief 窗口创建参数(零魔法数字:默认值具名于此)。 */
 struct WindowDesc {
     int width = 1280;
@@ -35,6 +37,9 @@ public:
 
     /** @brief 原生窗口句柄(HWND,转为 void*);供 RHI 创建交换链使用。 */
     void* NativeHandle() const;
+
+    /** @brief 注册键盘状态机;注册后窗口把 WM_KEYDOWN/UP 翻译并喂入。 */
+    void SetInput(InputState* input);
 
     // 前置声明公开,定义仍封死在 .cpp(供 .cpp 内的自由 WndProc 访问其成员)。
     struct Impl;
