@@ -10,6 +10,12 @@ if(WIN32)
         src/D3DCommon.cpp
         src/GpuDevice.cpp
         src/Fence.cpp
+        src/DescriptorHeap.cpp
+        src/CommandContext.cpp
+        src/GpuBuffer.cpp
+        src/GpuTexture.cpp
+        src/Readback.cpp
+        src/Shader.cpp
     )
     target_include_directories(me_rhi PUBLIC include)
     target_compile_features(me_rhi PUBLIC cxx_std_17)
@@ -24,7 +30,8 @@ if(WIN32)
         add_executable(me_gpu_tests
             ${CMAKE_SOURCE_DIR}/tests/gpu/gpu_test_main.cpp
             ${CMAKE_SOURCE_DIR}/tests/gpu/test_device_fence.cpp
-            # 后续 Task 8/12 追加 test_texture_roundtrip.cpp / test_sprite_render.cpp
+            ${CMAKE_SOURCE_DIR}/tests/gpu/test_texture_roundtrip.cpp
+            # 后续 Task 12 追加 test_sprite_render.cpp
         )
         target_link_libraries(me_gpu_tests PRIVATE doctest::doctest me_rhi me_rhi_cpu)
         add_test(NAME me_gpu_tests COMMAND me_gpu_tests)
