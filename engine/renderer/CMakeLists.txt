@@ -1,6 +1,6 @@
 if(WIN32)
     add_library(me_renderer STATIC
-        src/SpriteRenderer.cpp
+        src/SpriteBatch.cpp
     )
     target_include_directories(me_renderer PUBLIC include)
     target_compile_features(me_renderer PUBLIC cxx_std_17)

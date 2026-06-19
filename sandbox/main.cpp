@@ -6,6 +6,8 @@
 #include "me/core/Log.h"
 #include "me/core/Matrix4x4.h"
 #include "me/core/Vector2.h"
+#include "me/core/Rect.h"
+#include "me/core/Vector4.h"
 
 #include "me/rhi/GpuDevice.h"
 #include "me/rhi/SwapChain.h"
@@ -13,8 +15,8 @@
 #include "me/rhi/CommandContext.h"
 #include "me/rhi/DescriptorHeap.h"
 #include "me/rhi/GpuTexture.h"
-#include "me/rhi/SpriteTransform.h"
-#include "me/render/SpriteRenderer.h"
+#include "me/render/SpriteBatch.h"
+#include "me/render/SpriteDesc.h"
 
 #include <d3d12.h>
 
@@ -42,7 +44,7 @@ int main() {
     platform::WindowDesc wd;
     wd.width = kWindowWidth;
     wd.height = kWindowHeight;
-    wd.title = "MiniEngine M1 — Sprite";
+    wd.title = "MiniEngine M2 — SpriteBatch";
     auto window = platform::Window::Create(wd);
     if (!window) { ME_LOG_ERROR("窗口创建失败"); return 1; }
 
@@ -72,12 +74,13 @@ int main() {
         device->Device(), device->Queue(), *fence,
         static_cast<uint32_t>(image->width), static_cast<uint32_t>(image->height),
         image->pixels.data(), srv);
-    auto renderer = render::SpriteRenderer::Create(*device);
-    if (!texture || !renderer) { ME_LOG_ERROR("纹理/渲染器创建失败"); return 1; }
+    auto batch = render::SpriteBatch::Create(*device);
+    if (!texture || !batch) { ME_LOG_ERROR("纹理/渲染器创建失败"); return 1; }
 
     // 世界空间正交投影:左下原点,Y 向上,单位=像素。
     const Matrix4x4 proj = Matrix4x4::Orthographic(
         0.0f, float(kWindowWidth), 0.0f, float(kWindowHeight), 0.0f, 1.0f);
+    // 精灵中心位置(世界空间,像素单位)
     Vector2 spritePos{float(kWindowWidth) * 0.5f, float(kWindowHeight) * 0.5f};
 
     while (!window->ShouldClose()) {
@@ -106,17 +109,26 @@ int main() {
         ID3D12DescriptorHeap* heaps[] = {srvHeap->Heap()};
         cmd->SetDescriptorHeaps(1, heaps);
 
-        const Matrix4x4 model = rhi::MakeSpriteModelMatrix(
-            spritePos, Vector2{kSpritePixels, kSpritePixels}, 0.0f);
-        const Matrix4x4 mvp = model * proj; // 行向量:v * model * proj
-        renderer->Draw(cmd, *texture, mvp);
+        // 用 SpriteBatch 绘制单精灵(dstRect 以中心位置换算为左下角坐标)。
+        render::SpriteDesc d;
+        d.texture = texture.get();
+        d.dstRect = Rect{
+            spritePos.x - kSpritePixels * 0.5f,
+            spritePos.y - kSpritePixels * 0.5f,
+            kSpritePixels,
+            kSpritePixels
+        };
+
+        batch->Begin(proj);
+        batch->Submit(d);
+        batch->End(cmd);
 
         Transition(cmd, back, D3D12_RESOURCE_STATE_RENDER_TARGET,
                    D3D12_RESOURCE_STATE_PRESENT);
         ctx->End();
         ctx->Execute(device->Queue());
         swapChain->Present();
-        fence->Flush(device->Queue()); // M1 简单同步:每帧等 GPU(M2 再做并行化)
+        fence->Flush(device->Queue()); // M1/M2 简单同步:每帧等 GPU(M3 再做并行化)
         ctx->AdvanceFrame();
     }
 
