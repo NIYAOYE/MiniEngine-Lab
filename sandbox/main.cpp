@@ -1,4 +1,5 @@
 #include <memory>
+#include <vector>
 
 #include "me/platform/Window.h"
 #include "me/platform/Input.h"
@@ -6,8 +7,8 @@
 #include "me/core/Log.h"
 #include "me/core/Matrix4x4.h"
 #include "me/core/Vector2.h"
-#include "me/core/Rect.h"
 #include "me/core/Vector4.h"
+#include "me/core/Rect.h"
 
 #include "me/rhi/GpuDevice.h"
 #include "me/rhi/SwapChain.h"
@@ -17,6 +18,7 @@
 #include "me/rhi/GpuTexture.h"
 #include "me/render/SpriteBatch.h"
 #include "me/render/SpriteDesc.h"
+#include "me/render/OrthographicCamera.h"
 
 #include <d3d12.h>
 
@@ -25,8 +27,14 @@ using namespace me;
 namespace {
 constexpr int kWindowWidth = 1280;
 constexpr int kWindowHeight = 720;
-constexpr float kSpritePixels = 64.0f; // 精灵边长(像素)
-constexpr float kMoveSpeedPixels = 4.0f; // 每帧平移步长
+constexpr float kSpritePixels = 64.0f;   // 精灵边长(像素)
+constexpr float kGridCols = 8.0f;        // 精灵网格列数
+constexpr float kGridRows = 5.0f;        // 精灵网格行数
+constexpr float kGridSpacing = 96.0f;    // 精灵间距(像素)
+constexpr float kCameraSpeed = 6.0f;     // 每帧相机平移步长(像素)
+constexpr float kZoomStep = 0.02f;       // 每帧缩放步长
+constexpr float kMinZoom = 0.25f;
+constexpr float kMaxZoom = 4.0f;
 
 void Transition(ID3D12GraphicsCommandList* cmd, ID3D12Resource* res,
                 D3D12_RESOURCE_STATES from, D3D12_RESOURCE_STATES to) {
@@ -38,13 +46,15 @@ void Transition(ID3D12GraphicsCommandList* cmd, ID3D12Resource* res,
     b.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
     cmd->ResourceBarrier(1, &b);
 }
+
+float Clamp(float v, float lo, float hi) { return v < lo ? lo : (v > hi ? hi : v); }
 } // namespace
 
 int main() {
     platform::WindowDesc wd;
     wd.width = kWindowWidth;
     wd.height = kWindowHeight;
-    wd.title = "MiniEngine M2 — SpriteBatch";
+    wd.title = "MiniEngine M2 — SpriteBatch + Camera";
     auto window = platform::Window::Create(wd);
     if (!window) { ME_LOG_ERROR("窗口创建失败"); return 1; }
 
@@ -52,7 +62,7 @@ int main() {
     window->SetInput(&input);
 
     auto device = rhi::GpuDevice::Create(/*useWarp=*/false);
-    if (!device) device = rhi::GpuDevice::Create(/*useWarp=*/true); // 回退软件
+    if (!device) device = rhi::GpuDevice::Create(/*useWarp=*/true);
     if (!device) { ME_LOG_ERROR("DX12 设备创建失败"); return 1; }
 
     auto swapChain = rhi::SwapChain::Create(*device, window->NativeHandle(),
@@ -75,22 +85,31 @@ int main() {
         static_cast<uint32_t>(image->width), static_cast<uint32_t>(image->height),
         image->pixels.data(), srv);
     auto batch = render::SpriteBatch::Create(*device);
-    if (!texture || !batch) { ME_LOG_ERROR("纹理/渲染器创建失败"); return 1; }
+    if (!texture || !batch) { ME_LOG_ERROR("纹理/批渲染器创建失败"); return 1; }
 
-    // 世界空间正交投影:左下原点,Y 向上,单位=像素。
-    const Matrix4x4 proj = Matrix4x4::Orthographic(
-        0.0f, float(kWindowWidth), 0.0f, float(kWindowHeight), 0.0f, 1.0f);
-    // 精灵中心位置(世界空间,像素单位)
-    Vector2 spritePos{float(kWindowWidth) * 0.5f, float(kWindowHeight) * 0.5f};
+    // 相机居中于精灵网格中心。
+    render::OrthographicCamera camera;
+    camera.SetViewportSize(float(kWindowWidth), float(kWindowHeight));
+    camera.SetPosition(Vector2{kGridCols * kGridSpacing * 0.5f,
+                               kGridRows * kGridSpacing * 0.5f});
+    camera.SetZoom(1.0f);
 
     while (!window->ShouldClose()) {
         input.NewFrame();
         window->PumpMessages();
         if (input.WasPressed(platform::KeyCode::Escape)) break;
-        if (input.IsDown(platform::KeyCode::A)) spritePos.x -= kMoveSpeedPixels;
-        if (input.IsDown(platform::KeyCode::D)) spritePos.x += kMoveSpeedPixels;
-        if (input.IsDown(platform::KeyCode::W)) spritePos.y += kMoveSpeedPixels;
-        if (input.IsDown(platform::KeyCode::S)) spritePos.y -= kMoveSpeedPixels;
+
+        // 输入驱动相机:WASD 平移、Q/E 缩放。
+        Vector2 camPos = camera.Position();
+        if (input.IsDown(platform::KeyCode::A)) camPos.x -= kCameraSpeed;
+        if (input.IsDown(platform::KeyCode::D)) camPos.x += kCameraSpeed;
+        if (input.IsDown(platform::KeyCode::W)) camPos.y += kCameraSpeed;
+        if (input.IsDown(platform::KeyCode::S)) camPos.y -= kCameraSpeed;
+        camera.SetPosition(camPos);
+        float zoom = camera.Zoom();
+        if (input.IsDown(platform::KeyCode::Q)) zoom -= kZoomStep;
+        if (input.IsDown(platform::KeyCode::E)) zoom += kZoomStep;
+        camera.SetZoom(Clamp(zoom, kMinZoom, kMaxZoom));
 
         auto* cmd = ctx->Begin();
         ID3D12Resource* back = swapChain->CurrentBackBuffer();
@@ -103,24 +122,25 @@ int main() {
         cmd->RSSetViewports(1, &vp);
         cmd->RSSetScissorRects(1, &scissor);
         cmd->OMSetRenderTargets(1, &rtv, FALSE, nullptr);
-        const float clearColor[4] = {0.10f, 0.12f, 0.16f, 1.0f}; // 暗灰蓝清屏
+        const float clearColor[4] = {0.10f, 0.12f, 0.16f, 1.0f};
         cmd->ClearRenderTargetView(rtv, clearColor, 0, nullptr);
 
         ID3D12DescriptorHeap* heaps[] = {srvHeap->Heap()};
         cmd->SetDescriptorHeaps(1, heaps);
 
-        // 用 SpriteBatch 绘制单精灵(dstRect 以中心位置换算为左下角坐标)。
-        render::SpriteDesc d;
-        d.texture = texture.get();
-        d.dstRect = Rect{
-            spritePos.x - kSpritePixels * 0.5f,
-            spritePos.y - kSpritePixels * 0.5f,
-            kSpritePixels,
-            kSpritePixels
-        };
-
-        batch->Begin(proj);
-        batch->Submit(d);
+        // 铺一片静态精灵网格,带轻微色调梯度,验证合批。
+        batch->Begin(camera.ViewProj());
+        for (int row = 0; row < int(kGridRows); ++row) {
+            for (int col = 0; col < int(kGridCols); ++col) {
+                render::SpriteDesc d;
+                d.texture = texture.get();
+                d.dstRect = Rect{col * kGridSpacing, row * kGridSpacing,
+                                 kSpritePixels, kSpritePixels};
+                const float t = float(col) / kGridCols;
+                d.color = Vector4{1.0f, 1.0f - 0.5f * t, 1.0f - 0.5f * t, 1.0f};
+                batch->Submit(d);
+            }
+        }
         batch->End(cmd);
 
         Transition(cmd, back, D3D12_RESOURCE_STATE_RENDER_TARGET,
@@ -128,10 +148,10 @@ int main() {
         ctx->End();
         ctx->Execute(device->Queue());
         swapChain->Present();
-        fence->Flush(device->Queue()); // M1/M2 简单同步:每帧等 GPU(M3 再做并行化)
+        fence->Flush(device->Queue()); // M2 仍每帧全同步(帧并行后续里程碑)
         ctx->AdvanceFrame();
     }
 
-    fence->Flush(device->Queue()); // 退出前确保 GPU 空闲再析构资源
+    fence->Flush(device->Queue());
     return 0;
 }

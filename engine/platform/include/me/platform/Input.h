@@ -7,7 +7,7 @@
 namespace me::platform {
 
 /** @brief M1 关心的最小键集合(零魔法数字:用枚举,不用裸 VK 码)。 */
-enum class KeyCode { Escape, Space, W, A, S, D, Count };
+enum class KeyCode { Escape, Space, W, A, S, D, Q, E, Count };
 
 /**
  * @brief 跨平台键盘状态机:持续态 + 本帧边沿(刚按下/刚抬起)。
