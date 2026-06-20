@@ -13,6 +13,7 @@ add_executable(me_tests
     platform/test_input.cpp
     rhi/test_rhi_logic.cpp
     assets/test_image.cpp
+    assets/test_tile_layout.cpp
     render/test_camera.cpp
 )
 
