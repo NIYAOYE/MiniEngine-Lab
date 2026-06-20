@@ -27,6 +27,8 @@ public:
 
     const Vector2& Position() const { return m_position; }
     float Zoom() const { return m_zoom; }
+    float ViewportWidth() const { return m_width; }
+    float ViewportHeight() const { return m_height; }
 
     /// @brief 生成世界→NDC 的正交矩阵(行向量约定,v' = v * viewProj)。
     Matrix4x4 ViewProj() const {
