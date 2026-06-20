@@ -220,6 +220,10 @@ int main() {
         }
         // Scene 产出的精灵(RenderView → SpriteDesc 桥接:textureId 解析为 GpuTexture*)。
         for (const sc::RenderItem& it : renderView) {
+            if (it.textureId >= static_cast<std::uint32_t>(textureTable.size())) {
+                ME_LOG_ERROR("RenderItem textureId 越界,跳过该精灵");
+                continue;
+            }
             render::SpriteDesc d;
             d.texture = textureTable[it.textureId];
             d.srcRect = it.srcRect;
