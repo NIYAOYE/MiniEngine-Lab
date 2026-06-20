@@ -1,0 +1,29 @@
+{
+  "orientation": "orthogonal",
+  "width": 4,
+  "height": 3,
+  "tilewidth": 16,
+  "tileheight": 16,
+  "layers": [
+    {
+      "type": "tilelayer",
+      "name": "ground",
+      "width": 4,
+      "height": 3,
+      "data": [1, 1, 2, 2, 1, 1, 2, 2, 3, 3, "x", 4]
+    }
+  ],
+  "tilesets": [
+    {
+      "firstgid": 1,
+      "image": "tileset.png",
+      "imagewidth": 64,
+      "imageheight": 48,
+      "tilewidth": 16,
+      "tileheight": 16,
+      "columns": 4,
+      "margin": 0,
+      "spacing": 0
+    }
+  ]
+}

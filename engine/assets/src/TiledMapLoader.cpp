@@ -65,7 +65,13 @@ std::optional<TileMapData> LoadTiledMap(const std::string& path) {
         TileLayer tl;
         tl.name = layer.value("name", std::string());
         tl.gids.reserve(expected);
-        for (const auto& g : *dataIt) tl.gids.push_back(g.get<int>());
+        for (const auto& g : *dataIt) {
+            if (!g.is_number_integer()) {
+                ME_LOG_ERROR("LoadTiledMap: tilelayer data 含非整数元素");
+                return std::nullopt;
+            }
+            tl.gids.push_back(g.get<int>());
+        }
         map.layers.push_back(std::move(tl));
     }
     if (map.layers.empty()) {

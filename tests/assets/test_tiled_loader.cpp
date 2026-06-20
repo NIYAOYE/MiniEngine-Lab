@@ -27,6 +27,8 @@ TEST_CASE("LoadTiledMap:解析合法地图——尺寸/层/gid/tileset") {
     CHECK(map->tileset.columns == 4);
     CHECK(map->tileset.firstGid == 1);
     CHECK(map->tileset.imageWidth == 64);
+    // 验证 DirOf 路径拼接:imagePath 应以 tileset.png 结尾。
+    CHECK(map->tileset.imagePath.find("tileset.png") != std::string::npos);
 }
 
 TEST_CASE("LoadTiledMap:文件不存在 → nullopt") {
@@ -35,4 +37,10 @@ TEST_CASE("LoadTiledMap:文件不存在 → nullopt") {
 
 TEST_CASE("LoadTiledMap:非法 JSON → nullopt(不抛异常)") {
     CHECK_FALSE(LoadTiledMap(Fixture("bad.tmj")).has_value());
+}
+
+TEST_CASE("LoadTiledMap:data 含非整数元素 → nullopt(不抛异常)") {
+    // bad_data.tmj 的 data 数组长度正确(=width*height=12),但第 11 个元素为字符串 "x"。
+    // 守卫代码必须返回 nullopt 而非触发 C++ 异常。
+    CHECK_FALSE(LoadTiledMap(Fixture("bad_data.tmj")).has_value());
 }
