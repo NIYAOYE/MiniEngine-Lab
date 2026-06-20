@@ -58,7 +58,8 @@ public:
 
     void Remove(Entity e) override {
         auto it = m_sparse.find(e.index);
-        if (it == m_sparse.end()) return;
+        // 同 Get/Has:比对完整 Entity(含 generation),拒绝已回收槽位的悬垂句柄。
+        if (it == m_sparse.end() || m_owners[it->second] != e) return;
         const std::size_t dense = it->second;
         const std::size_t last = m_items.size() - 1;
         if (dense != last) {

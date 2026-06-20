@@ -60,3 +60,18 @@ TEST_CASE("Components:槽位复用后新实体不继承旧组件") {
     const Entity b = scene.CreateEntity(); // 复用槽位
     CHECK_FALSE(scene.HasComponent<Health>(b));
 }
+
+TEST_CASE("Components:用悬垂句柄 RemoveComponent 不误删复用槽位的新组件") {
+    Scene scene;
+    const Entity a = scene.CreateEntity();
+    scene.AddComponent<Health>(a, Health{5});
+    scene.DestroyEntity(a);
+    const Entity b = scene.CreateEntity(); // 复用 a 的槽位,新 generation
+    scene.AddComponent<Health>(b, Health{9});
+    // 用 a 的悬垂句柄尝试删除;应该被拒绝(generation 不匹配)
+    scene.RemoveComponent<Health>(a);
+    // b 的组件应该完好无损
+    CHECK(scene.HasComponent<Health>(b));
+    REQUIRE(scene.GetComponent<Health>(b) != nullptr);
+    CHECK(scene.GetComponent<Health>(b)->value == 9);
+}
