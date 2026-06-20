@@ -14,6 +14,7 @@ add_executable(me_tests
     rhi/test_rhi_logic.cpp
     assets/test_image.cpp
     assets/test_tile_layout.cpp
+    assets/test_tile_geometry.cpp
     render/test_camera.cpp
 )
 
