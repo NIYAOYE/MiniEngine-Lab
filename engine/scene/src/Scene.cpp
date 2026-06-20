@@ -146,13 +146,15 @@ void Scene::MarkSubtreeDirty(Entity e) {
 }
 
 bool Scene::IsDescendantOf(Entity e, Entity maybeAncestor) const {
-    // 从 e 沿父链上行,若遇到 maybeAncestor 则 e 是其后代。
-    Entity cur = e;
+    // 从 e 的父开始上行(不含 e 自身:节点不是自身的后代);
+    // 链上若遇到 maybeAncestor 则 e 是其(真)后代。
+    const Slot* s = SlotOf(e);
+    Entity cur = s ? s->parent : Entity::Invalid();
     while (cur.IsValid()) {
-        const Slot* s = SlotOf(cur);
-        if (s == nullptr) break;
         if (cur == maybeAncestor) return true;
-        cur = s->parent;
+        const Slot* cs = SlotOf(cur);
+        if (cs == nullptr) break;
+        cur = cs->parent;
     }
     return false;
 }
