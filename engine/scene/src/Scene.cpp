@@ -84,7 +84,9 @@ std::vector<Entity> Scene::AliveEntities() const {
     return out;
 }
 
-void Scene::RemoveAllComponents(Entity) { /* Task 3 填充 */ }
+void Scene::RemoveAllComponents(Entity e) {
+    for (auto& kv : m_stores) kv.second->Remove(e);
+}
 
 void Scene::SetLocalTransform(Entity e, const me::Transform2D& t) {
     Slot* s = SlotOf(e);

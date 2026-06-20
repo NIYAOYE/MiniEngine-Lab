@@ -2,10 +2,15 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
+#include <typeindex>
+#include <unordered_map>
 #include <vector>
 
+#include "me/core/Assert.h"
 #include "me/core/Matrix4x4.h"
 #include "me/core/Transform2D.h"
+#include "me/scene/ComponentStorage.h"
 #include "me/scene/Entity.h"
 
 namespace me::scene {
@@ -50,6 +55,48 @@ public:
     /// @brief 世界矩阵是否待重算。
     bool IsWorldDirty(Entity e) const;
 
+    // —— 组件(数据型,存储隐藏在 ComponentStorage 接口后)——
+    /// @brief 给实体添加/覆盖组件,返回引用。实体须存活。
+    template <class T>
+    T& AddComponent(Entity e, const T& value = T{}) {
+        ME_ASSERT_MSG(IsAlive(e), "AddComponent: 实体已失效");
+        return ComponentStore<T>().Add(e, value);
+    }
+
+    /// @brief 取组件指针;无则 nullptr。
+    template <class T>
+    T* GetComponent(Entity e) {
+        auto* store = FindStore<T>();
+        return store ? store->Get(e) : nullptr;
+    }
+
+    /// @brief 实体是否拥有该类组件。
+    template <class T>
+    bool HasComponent(Entity e) const {
+        const auto* store = FindStore<T>();
+        return store && store->Has(e);
+    }
+
+    /// @brief 移除组件(无则无操作)。
+    template <class T>
+    void RemoveComponent(Entity e) {
+        if (auto* store = FindStore<T>()) store->Remove(e);
+    }
+
+    /// @brief 取(必要时创建)某类型的组件存储,供 System 顺序遍历。
+    template <class T>
+    ComponentStorage<T>& ComponentStore() {
+        const std::type_index key(typeid(T));
+        auto it = m_stores.find(key);
+        if (it == m_stores.end()) {
+            auto store = std::make_unique<ComponentStorage<T>>();
+            ComponentStorage<T>& ref = *store;
+            m_stores.emplace(key, std::move(store));
+            return ref;
+        }
+        return *static_cast<ComponentStorage<T>*>(it->second.get());
+    }
+
 private:
     // 每实体一个槽位;index 即句柄 index。销毁后 alive=false 并加入空闲表。
     struct Slot {
@@ -77,7 +124,24 @@ private:
     std::vector<std::uint32_t> m_freeList; // 可复用槽位 index
     std::size_t m_aliveCount = 0;
 
-    // —— 后续任务在此追加:层级、世界矩阵解析、组件存储 ——
+    // 类型擦除的组件存储集合(每种组件类型一个 ComponentStorage<T>)。
+    std::unordered_map<std::type_index, std::unique_ptr<IComponentStorage>> m_stores;
+
+    // 查找已存在的存储(不创建);const 与非 const 重载。
+    template <class T>
+    ComponentStorage<T>* FindStore() {
+        auto it = m_stores.find(std::type_index(typeid(T)));
+        return it == m_stores.end()
+                   ? nullptr
+                   : static_cast<ComponentStorage<T>*>(it->second.get());
+    }
+    template <class T>
+    const ComponentStorage<T>* FindStore() const {
+        auto it = m_stores.find(std::type_index(typeid(T)));
+        return it == m_stores.end()
+                   ? nullptr
+                   : static_cast<const ComponentStorage<T>*>(it->second.get());
+    }
 };
 
 } // namespace me::scene
