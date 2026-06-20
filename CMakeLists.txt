@@ -18,7 +18,8 @@ add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/utf-8>)
 # Windows 全程使用宽字符(-W)API:定义 UNICODE/_UNICODE,使 IDC_ARROW 等资源宏
 # 解析为宽字符版本,与 LoadCursorW/CreateWindowExW 等一致。
 if(WIN32)
-    add_compile_definitions(UNICODE _UNICODE)
+    # NOMINMAX:防止 windows.h 定义 min/max 宏,与 std::min/std::max 冲突。
+    add_compile_definitions(UNICODE _UNICODE NOMINMAX)
 endif()
 
 # 单一构建输出目录,便于查找产物
