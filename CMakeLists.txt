@@ -35,6 +35,7 @@ add_subdirectory(engine/core)
 add_subdirectory(engine/platform)
 add_subdirectory(engine/rhi)
 add_subdirectory(engine/assets)
+add_subdirectory(engine/scene)
 add_subdirectory(engine/renderer)
 
 if(ME_BUILD_TESTS)
