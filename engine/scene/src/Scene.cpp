@@ -42,10 +42,14 @@ void Scene::DestroyEntity(Entity e) {
 
     // 先递归销毁子树(复制子列表,避免遍历中被修改)。
     const std::vector<Entity> kids = s->children;
+    const std::uint32_t index = e.index;
     for (const Entity child : kids) DestroyEntity(child);
 
+    // 递归销毁子树后按 index 重取槽位:子树销毁不会增长 m_slots,但显式重取避免依赖该隐式不变量。
+    Slot& slot = m_slots[index];
+
     // 从父的 children 中摘除自己。
-    if (Slot* parent = SlotOf(s->parent)) {
+    if (Slot* parent = SlotOf(slot.parent)) {
         auto& siblings = parent->children;
         for (std::size_t i = 0; i < siblings.size(); ++i) {
             if (siblings[i] == e) {
@@ -59,11 +63,11 @@ void Scene::DestroyEntity(Entity e) {
     // 组件清理钩子(Task 3 实现);此处先声明,Task 3 填充。
     RemoveAllComponents(e);
 
-    s->alive = false;
-    s->children.clear();
-    s->parent = Entity::Invalid();
-    ++s->generation; // 递增代号 → 旧句柄立即失效
-    m_freeList.push_back(e.index);
+    slot.alive = false;
+    slot.children.clear();
+    slot.parent = Entity::Invalid();
+    ++slot.generation; // 递增代号 → 旧句柄立即失效
+    m_freeList.push_back(index);
     --m_aliveCount;
 }
 
