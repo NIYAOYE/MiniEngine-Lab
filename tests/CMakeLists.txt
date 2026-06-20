@@ -20,6 +20,7 @@ add_executable(me_tests
     scene/test_entity.cpp
     scene/test_transform_hierarchy.cpp
     scene/test_component_storage.cpp
+    scene/test_render_system.cpp
 )
 
 target_link_libraries(me_tests PRIVATE doctest::doctest me_core me_platform me_rhi_cpu me_assets me_scene)
