@@ -5,6 +5,7 @@
 #include "me/core/Rect.h"
 #include "me/core/Vector2.h"
 #include "me/core/Vector4.h"
+#include "me/assets/TileMapData.h"
 
 namespace me::scene {
 
@@ -37,6 +38,15 @@ struct SpriteComponent {
 struct CameraComponent {
     float zoom = 1.0f;
     me::Vector2 viewportSize{0.0f, 0.0f};
+};
+
+/**
+ * @brief 瓦片地图组件(纯数据,非拥有指针)。map 指向已加载的 TileMapData,
+ *        textureId 引用其 tileset 纹理;由渲染边界用 TileMapRenderer 绘制。
+ */
+struct TileMapComponent {
+    const me::assets::TileMapData* map = nullptr;
+    std::uint32_t textureId = kInvalidTextureId;
 };
 
 } // namespace me::scene

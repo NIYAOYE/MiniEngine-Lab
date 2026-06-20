@@ -89,6 +89,37 @@ batch.End(cmd);
 
 `assets/shaders/sprite.hlsl`:顶点接收 pos+uv+color,uniform `uViewProj`,PS 采样纹理后乘以 color 色调。
 
+## RenderView → SpriteBatch 桥接约定(M4)
+
+`me::scene::RenderSystem::BuildRenderView` 产出的 `RenderView`(即 `std::vector<RenderItem>`)
+使用 RHI 无关的 `uint32_t textureId` 引用纹理,Scene 层不持有 `GpuTexture*`。
+渲染边界(当前为 sandbox,未来为 Engine 层)负责将 `textureId` 解析为 `GpuTexture*`,
+再填入 `SpriteDesc` 提交给 `SpriteBatch`：
+
+```cpp
+// textureId → GpuTexture* 解析表(调用方维护,生命周期归调用方)。
+std::vector<const rhi::GpuTexture*> textureTable;
+textureTable.push_back(tileTex.get()); // index 0 = tileset 纹理
+
+batch->Begin(camera.ViewProj());
+// 地面瓦片:TileMapComponent → TileMapRenderer
+tileRenderer.Render(*batch, camera, *tm->map, tileset);
+// Scene 精灵:RenderItem → SpriteDesc 桥接
+for (const scene::RenderItem& it : renderView) {
+    render::SpriteDesc d;
+    d.texture = textureTable[it.textureId]; // textureId 解析点
+    d.srcRect  = it.srcRect;
+    d.dstRect  = it.dstRect;
+    d.color    = it.color;
+    d.rotation = it.rotation;
+    batch->Submit(d);
+}
+batch->End(cmd);
+```
+
+瓦片与精灵在同一 `Begin/End` 内提交;单图集时 SpriteBatch 合批 → **1 次 drawcall**。
+稳定纹理排序保留 `RenderSystem` 按层 + 世界 Y 降序产出的 2.5D 叠压顺序。
+
 ## 模块说明
 
 - M1 `SpriteRenderer`(单精灵,根签名+PSO+单位四边形)已于 M2 退役并入 `SpriteBatch`。
