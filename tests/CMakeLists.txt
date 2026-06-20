@@ -17,9 +17,10 @@ add_executable(me_tests
     assets/test_tile_geometry.cpp
     assets/test_tiled_loader.cpp
     render/test_camera.cpp
+    scene/test_entity.cpp
 )
 
-target_link_libraries(me_tests PRIVATE doctest::doctest me_core me_platform me_rhi_cpu me_assets)
+target_link_libraries(me_tests PRIVATE doctest::doctest me_core me_platform me_rhi_cpu me_assets me_scene)
 
 target_include_directories(me_tests PRIVATE ${CMAKE_SOURCE_DIR}/engine/renderer/include)
 
