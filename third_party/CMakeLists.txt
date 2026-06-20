@@ -20,3 +20,12 @@ FetchContent_MakeAvailable(stb)
 
 add_library(stb_image INTERFACE)
 target_include_directories(stb_image INTERFACE ${stb_SOURCE_DIR})
+
+# nlohmann/json:单头 JSON 库。用于 Tiled 地图解析(M3)、后续 Tool/序列化(M5+)。
+FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG        v3.11.3
+)
+FetchContent_MakeAvailable(nlohmann_json)
+# 提供 target: nlohmann_json::nlohmann_json

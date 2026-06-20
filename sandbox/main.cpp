@@ -4,6 +4,7 @@
 #include "me/platform/Window.h"
 #include "me/platform/Input.h"
 #include "me/assets/ImageData.h"
+#include "me/assets/TiledMapLoader.h"
 #include "me/core/Log.h"
 #include "me/core/Matrix4x4.h"
 #include "me/core/Vector2.h"
@@ -19,6 +20,8 @@
 #include "me/render/SpriteBatch.h"
 #include "me/render/SpriteDesc.h"
 #include "me/render/OrthographicCamera.h"
+#include "me/render/Tileset.h"
+#include "me/render/TileMapRenderer.h"
 
 #include <d3d12.h>
 
@@ -27,10 +30,6 @@ using namespace me;
 namespace {
 constexpr int kWindowWidth = 1280;
 constexpr int kWindowHeight = 720;
-constexpr float kSpritePixels = 64.0f;   // 精灵边长(像素)
-constexpr float kGridCols = 8.0f;        // 精灵网格列数
-constexpr float kGridRows = 5.0f;        // 精灵网格行数
-constexpr float kGridSpacing = 96.0f;    // 精灵间距(像素)
 constexpr float kCameraSpeed = 6.0f;     // 每帧相机平移步长(像素)
 constexpr float kZoomStep = 0.02f;       // 每帧缩放步长
 constexpr float kMinZoom = 0.25f;
@@ -54,7 +53,7 @@ int main() {
     platform::WindowDesc wd;
     wd.width = kWindowWidth;
     wd.height = kWindowHeight;
-    wd.title = "MiniEngine M2 — SpriteBatch + Camera";
+    wd.title = "MiniEngine M3 — TileMap";
     auto window = platform::Window::Create(wd);
     if (!window) { ME_LOG_ERROR("窗口创建失败"); return 1; }
 
@@ -75,23 +74,28 @@ int main() {
         ME_LOG_ERROR("RHI 初始化失败"); return 1;
     }
 
-    auto image = assets::LoadImageRGBA8(std::string(ME_ASSET_DIR) +
-                                        "/textures/test_sprite.png");
-    if (!image) { ME_LOG_ERROR("加载贴图失败"); return 1; }
-
-    auto srv = srvHeap->Allocate();
-    auto texture = rhi::GpuTexture::Create(
-        device->Device(), device->Queue(), *fence,
-        static_cast<uint32_t>(image->width), static_cast<uint32_t>(image->height),
-        image->pixels.data(), srv);
     auto batch = render::SpriteBatch::Create(*device);
-    if (!texture || !batch) { ME_LOG_ERROR("纹理/批渲染器创建失败"); return 1; }
+    if (!batch) { ME_LOG_ERROR("批渲染器创建失败"); return 1; }
 
-    // 相机居中于精灵网格中心。
+    // 数据驱动:从 Tiled JSON 加载地图 + 其 tileset 贴图。
+    auto mapData = assets::LoadTiledMap(std::string(ME_ASSET_DIR) + "/maps/demo.tmj");
+    if (!mapData) { ME_LOG_ERROR("加载地图失败"); return 1; }
+    auto tileImage = assets::LoadImageRGBA8(mapData->tileset.imagePath);
+    if (!tileImage) { ME_LOG_ERROR("加载 tileset 贴图失败"); return 1; }
+    auto tileSrv = srvHeap->Allocate();
+    auto tileTex = rhi::GpuTexture::Create(
+        device->Device(), device->Queue(), *fence,
+        uint32_t(tileImage->width), uint32_t(tileImage->height),
+        tileImage->pixels.data(), tileSrv);
+    if (!tileTex) { ME_LOG_ERROR("创建 tileset 纹理失败"); return 1; }
+    render::Tileset tileset(tileTex.get(), mapData->tileset);
+    render::TileMapRenderer tileRenderer;
+
+    // 相机居中于地图中心。
     render::OrthographicCamera camera;
     camera.SetViewportSize(float(kWindowWidth), float(kWindowHeight));
-    camera.SetPosition(Vector2{kGridCols * kGridSpacing * 0.5f,
-                               kGridRows * kGridSpacing * 0.5f});
+    camera.SetPosition(Vector2{mapData->mapCols * mapData->tileWidth * 0.5f,
+                               mapData->mapRows * mapData->tileHeight * 0.5f});
     camera.SetZoom(1.0f);
 
     while (!window->ShouldClose()) {
@@ -128,19 +132,9 @@ int main() {
         ID3D12DescriptorHeap* heaps[] = {srvHeap->Heap()};
         cmd->SetDescriptorHeaps(1, heaps);
 
-        // 铺一片静态精灵网格,带轻微色调梯度,验证合批。
+        // 渲染瓦片地图:调用方负责 Begin/End,TileMapRenderer 仅 Submit。
         batch->Begin(camera.ViewProj());
-        for (int row = 0; row < int(kGridRows); ++row) {
-            for (int col = 0; col < int(kGridCols); ++col) {
-                render::SpriteDesc d;
-                d.texture = texture.get();
-                d.dstRect = Rect{col * kGridSpacing, row * kGridSpacing,
-                                 kSpritePixels, kSpritePixels};
-                const float t = float(col) / kGridCols;
-                d.color = Vector4{1.0f, 1.0f - 0.5f * t, 1.0f - 0.5f * t, 1.0f};
-                batch->Submit(d);
-            }
-        }
+        tileRenderer.Render(*batch, camera, *mapData, tileset);
         batch->End(cmd);
 
         Transition(cmd, back, D3D12_RESOURCE_STATE_RENDER_TARGET,
@@ -148,7 +142,7 @@ int main() {
         ctx->End();
         ctx->Execute(device->Queue());
         swapChain->Present();
-        fence->Flush(device->Queue()); // M2 仍每帧全同步(帧并行后续里程碑)
+        fence->Flush(device->Queue()); // M3 仍每帧全同步(帧并行后续里程碑)
         ctx->AdvanceFrame();
     }
 
