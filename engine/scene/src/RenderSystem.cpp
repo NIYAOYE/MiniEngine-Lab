@@ -2,9 +2,11 @@
 
 #include <algorithm>
 #include <cmath>
+#include <optional>
 
 #include "me/scene/Scene.h"
 #include "me/scene/Components.h"
+#include "me/scene/CameraView.h"
 #include "me/core/Matrix4x4.h"
 #include "me/core/Vector2.h"
 
@@ -69,6 +71,29 @@ RenderView RenderSystem::BuildRenderView(Scene& scene) {
             // dstRect.y 为左下角;以其作为同层 Y 比较键即可(尺寸一致时等价于中心)。
             return a.dstRect.y > b.dstRect.y;
         });
+    return view;
+}
+
+std::optional<CameraView> RenderSystem::ResolveActiveCamera(Scene& scene) {
+    ComponentStorage<CameraComponent>& store = scene.ComponentStore<CameraComponent>();
+
+    // 优先:显式活动相机且仍持有 CameraComponent。
+    Entity cam = scene.ActiveCamera();
+    const CameraComponent* comp = scene.IsAlive(cam) ? store.Get(cam) : nullptr;
+
+    // 回退:第一个带 CameraComponent 的存活实体。
+    if (comp == nullptr) {
+        const std::vector<Entity>& owners = store.Entities();
+        for (std::size_t i = 0; i < owners.size(); ++i) {
+            if (scene.IsAlive(owners[i])) { cam = owners[i]; comp = &store.Items()[i]; break; }
+        }
+    }
+    if (comp == nullptr) return std::nullopt;
+
+    CameraView view;
+    view.center = scene.WorldMatrix(cam).TransformPoint(me::Vector2{0.0f, 0.0f});
+    view.zoom = comp->zoom;
+    view.viewportSize = comp->viewportSize;
     return view;
 }
 

@@ -30,4 +30,13 @@ struct SpriteComponent {
     int sortLayer = 0;
 };
 
+/**
+ * @brief 正交相机组件(纯数据)。相机中心 = 实体世界位置;zoom>1 放大。
+ *        viewportSize 为像素视口尺寸(通常等于渲染目标尺寸)。
+ */
+struct CameraComponent {
+    float zoom = 1.0f;
+    me::Vector2 viewportSize{0.0f, 0.0f};
+};
+
 } // namespace me::scene

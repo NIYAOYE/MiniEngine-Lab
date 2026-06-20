@@ -83,6 +83,12 @@ public:
         if (auto* store = FindStore<T>()) store->Remove(e);
     }
 
+    // —— 活动相机 ——
+    /// @brief 指定活动相机实体(RenderSystem::ResolveActiveCamera 优先使用)。
+    void SetActiveCamera(Entity e) { m_activeCamera = e; }
+    /// @brief 当前活动相机实体(可能无效)。
+    Entity ActiveCamera() const { return m_activeCamera; }
+
     /// @brief 取(必要时创建)某类型的组件存储,供 System 顺序遍历。
     template <class T>
     ComponentStorage<T>& ComponentStore() {
@@ -123,6 +129,7 @@ private:
     std::vector<Slot> m_slots;
     std::vector<std::uint32_t> m_freeList; // 可复用槽位 index
     std::size_t m_aliveCount = 0;
+    Entity m_activeCamera = Entity::Invalid();
 
     // 类型擦除的组件存储集合(每种组件类型一个 ComponentStorage<T>)。
     std::unordered_map<std::type_index, std::unique_ptr<IComponentStorage>> m_stores;

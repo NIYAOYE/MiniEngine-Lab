@@ -1,6 +1,9 @@
 #pragma once
 
+#include <optional>
+
 #include "me/scene/RenderView.h"
+#include "me/scene/CameraView.h"
 
 namespace me::scene {
 
@@ -15,6 +18,9 @@ class Scene;
 class RenderSystem {
 public:
     static RenderView BuildRenderView(Scene& scene);
+
+    /// @brief 解析活动相机为纯数据 CameraView;无可用相机返回 nullopt。
+    static std::optional<CameraView> ResolveActiveCamera(Scene& scene);
 };
 
 } // namespace me::scene
