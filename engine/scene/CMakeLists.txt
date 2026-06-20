@@ -1,5 +1,6 @@
 add_library(me_scene STATIC
     src/Scene.cpp
+    src/TransformSystem.cpp
 )
 target_include_directories(me_scene PUBLIC include)
 target_compile_features(me_scene PUBLIC cxx_std_17)

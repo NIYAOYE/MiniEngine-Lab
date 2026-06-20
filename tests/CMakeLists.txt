@@ -18,6 +18,7 @@ add_executable(me_tests
     assets/test_tiled_loader.cpp
     render/test_camera.cpp
     scene/test_entity.cpp
+    scene/test_transform_hierarchy.cpp
 )
 
 target_link_libraries(me_tests PRIVATE doctest::doctest me_core me_platform me_rhi_cpu me_assets me_scene)

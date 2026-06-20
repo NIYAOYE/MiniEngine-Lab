@@ -34,6 +34,22 @@ public:
     /// @brief 收集全部存活实体(顺序为槽位顺序,供 System 遍历)。
     std::vector<Entity> AliveEntities() const;
 
+    // —— 层级与变换 ——
+    /// @brief 设置实体局部变换,并把以它为根的子树标记为世界脏。
+    void SetLocalTransform(Entity e, const me::Transform2D& t);
+    /// @brief 读取实体局部变换(实体须存活)。
+    const me::Transform2D& LocalTransform(Entity e) const;
+    /// @brief 设置父实体(传 Entity::Invalid() 脱离);更新邻接并把子树标记脏。
+    void SetParent(Entity child, Entity parent);
+    /// @brief 父实体句柄(无父时为 Invalid)。
+    Entity Parent(Entity e) const;
+    /// @brief 子实体列表(实体须存活;无子时为空)。
+    const std::vector<Entity>& Children(Entity e) const;
+    /// @brief 解析并返回世界矩阵(惰性:脏则沿父链重算并缓存)。
+    const me::Matrix4x4& WorldMatrix(Entity e);
+    /// @brief 世界矩阵是否待重算。
+    bool IsWorldDirty(Entity e) const;
+
 private:
     // 每实体一个槽位;index 即句柄 index。销毁后 alive=false 并加入空闲表。
     struct Slot {
@@ -52,6 +68,10 @@ private:
 
     // 销毁实体时移除其全部组件(Task 3 填充存储遍历)。
     void RemoveAllComponents(Entity e);
+    // 把以 e 为根的子树全部标记为世界脏(局部/父变更后调用)。
+    void MarkSubtreeDirty(Entity e);
+    // e 是否为 maybeAncestor 的(传递)后代;用于 SetParent 环路防护。
+    bool IsDescendantOf(Entity e, Entity maybeAncestor) const;
 
     std::vector<Slot> m_slots;
     std::vector<std::uint32_t> m_freeList; // 可复用槽位 index

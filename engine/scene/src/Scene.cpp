@@ -1,5 +1,7 @@
 #include "me/scene/Scene.h"
 
+#include "me/core/Assert.h"
+
 namespace me::scene {
 
 Scene::Slot* Scene::SlotOf(Entity e) {
@@ -83,5 +85,93 @@ std::vector<Entity> Scene::AliveEntities() const {
 }
 
 void Scene::RemoveAllComponents(Entity) { /* Task 3 填充 */ }
+
+void Scene::SetLocalTransform(Entity e, const me::Transform2D& t) {
+    Slot* s = SlotOf(e);
+    ME_ASSERT_MSG(s != nullptr, "SetLocalTransform: 实体已失效");
+    s->local = t;
+    MarkSubtreeDirty(e);
+}
+
+const me::Transform2D& Scene::LocalTransform(Entity e) const {
+    const Slot* s = SlotOf(e);
+    ME_ASSERT_MSG(s != nullptr, "LocalTransform: 实体已失效");
+    return s->local;
+}
+
+void Scene::SetParent(Entity child, Entity parent) {
+    Slot* cs = SlotOf(child);
+    ME_ASSERT_MSG(cs != nullptr, "SetParent: child 已失效");
+    if (parent.IsValid()) {
+        ME_ASSERT_MSG(SlotOf(parent) != nullptr, "SetParent: parent 已失效");
+        ME_ASSERT_MSG(child != parent, "SetParent: 不能以自身为父");
+        ME_ASSERT_MSG(!IsDescendantOf(parent, child),
+                      "SetParent: 会形成环路(parent 是 child 的后代)");
+    }
+    // 从旧父摘除。
+    if (Slot* oldParent = SlotOf(cs->parent)) {
+        auto& sib = oldParent->children;
+        for (std::size_t i = 0; i < sib.size(); ++i) {
+            if (sib[i] == child) { sib[i] = sib.back(); sib.pop_back(); break; }
+        }
+    }
+    cs->parent = parent;
+    if (Slot* np = SlotOf(parent)) np->children.push_back(child);
+    MarkSubtreeDirty(child);
+}
+
+Entity Scene::Parent(Entity e) const {
+    const Slot* s = SlotOf(e);
+    ME_ASSERT_MSG(s != nullptr, "Parent: 实体已失效");
+    return s->parent;
+}
+
+const std::vector<Entity>& Scene::Children(Entity e) const {
+    const Slot* s = SlotOf(e);
+    ME_ASSERT_MSG(s != nullptr, "Children: 实体已失效");
+    return s->children;
+}
+
+bool Scene::IsWorldDirty(Entity e) const {
+    const Slot* s = SlotOf(e);
+    ME_ASSERT_MSG(s != nullptr, "IsWorldDirty: 实体已失效");
+    return s->worldDirty;
+}
+
+void Scene::MarkSubtreeDirty(Entity e) {
+    Slot* s = SlotOf(e);
+    if (s == nullptr) return;
+    s->worldDirty = true;
+    for (const Entity child : s->children) MarkSubtreeDirty(child);
+}
+
+bool Scene::IsDescendantOf(Entity e, Entity maybeAncestor) const {
+    // 从 e 沿父链上行,若遇到 maybeAncestor 则 e 是其后代。
+    Entity cur = e;
+    while (cur.IsValid()) {
+        const Slot* s = SlotOf(cur);
+        if (s == nullptr) break;
+        if (cur == maybeAncestor) return true;
+        cur = s->parent;
+    }
+    return false;
+}
+
+const me::Matrix4x4& Scene::WorldMatrix(Entity e) {
+    Slot* s = SlotOf(e);
+    ME_ASSERT_MSG(s != nullptr, "WorldMatrix: 实体已失效");
+    if (!s->worldDirty) return s->world;
+    const me::Matrix4x4 localM = s->local.ToMatrix();
+    if (s->parent.IsValid()) {
+        // 先递归解析父(父先于子),再 world = local * parentWorld(行向量约定)。
+        const me::Matrix4x4 parentWorld = WorldMatrix(s->parent); // 拷贝,避免下行使 s 失效后引用悬垂
+        s = SlotOf(e); // 递归可能引起 m_slots 重分配?否(本任务不增删槽位);仍重取以稳健
+        s->world = localM * parentWorld;
+    } else {
+        s->world = localM;
+    }
+    s->worldDirty = false;
+    return s->world;
+}
 
 } // namespace me::scene
