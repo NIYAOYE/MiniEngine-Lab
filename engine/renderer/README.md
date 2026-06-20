@@ -1,6 +1,6 @@
 # engine/renderer(me_renderer,仅 Windows)
 
-2D 渲染。M2 提供 SpriteBatch(按纹理合批)、OrthographicCamera(header-only 正交相机)、SpriteDesc(提交单元)。
+2D 渲染。M2 提供 SpriteBatch(按纹理合批)、OrthographicCamera(header-only 正交相机)、SpriteDesc(提交单元)。M3 新增 Tileset + TileMapRenderer。
 依赖:Core, RHI, Assets(单向)。
 
 ## 公开类型
@@ -47,6 +47,43 @@ Matrix4x4 ViewProj() const; // 世界→NDC 正交矩阵,供 SpriteBatch::Begin 
 
 `ViewProj()` 复用 `Matrix4x4::Orthographic`,将可见矩形 `[pos ± halfExtent/zoom]` 映射到 NDC。
 行向量约定(v' = v * viewProj),与 DX12/DirectXMath 同源。
+
+### `me::render::Tileset`
+
+运行时 tileset:将 `TilesetDesc` 绑定到已上传的 `GpuTexture`。非拥有纹理指针,生命周期归调用方。
+
+```cpp
+Tileset(const me::rhi::GpuTexture* texture, me::assets::TilesetDesc desc);
+
+const me::rhi::GpuTexture* Texture() const;
+
+/// 全局 gid → 归一化采样 UV(调用方须保证 gid != kEmptyTileGid)。
+me::Rect SrcRectForGid(int gid) const;
+```
+
+### `me::render::TileMapRenderer`
+
+瓦片地图渲染器薄层:逐层、逐可见瓦片算 dst/src 矩形并 Submit 给 SpriteBatch。
+
+```cpp
+void Render(SpriteBatch& batch, const OrthographicCamera& camera,
+            const me::assets::TileMapData& map, const Tileset& tileset) const;
+```
+
+**复用 SpriteBatch:**`TileMapRenderer` 不自行 Begin/End,由调用方包裹:
+
+```cpp
+batch.Begin(camera.ViewProj());
+tileRenderer.Render(batch, camera, map, tileset);
+batch.End(cmd);
+```
+
+此设计使瓦片与精灵可在同一 Begin/End 内混合提交,合批边界由调用方控制。
+整张单 tileset 地图所有可见瓦片共享同一纹理,SpriteBatch 合批后产生 **1 次 drawcall**。
+
+**视野裁剪:**根据相机可见矩形只提交可见瓦片列/行范围;跳过 `gid == kEmptyTileGid` 的空格(减少无效 Submit)。
+
+**层序:**`TileMapData.layers` 数组顺序绘制,首层在底(ground 层先于 decor 层)。
 
 ## 着色器
 
