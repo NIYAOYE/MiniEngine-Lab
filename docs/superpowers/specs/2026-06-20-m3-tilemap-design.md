@@ -85,7 +85,7 @@
 - `LoadTiledMap`:解析提交的样例 `tests/assets/*.tmj`(断言 mapCols/Rows、层数、若干 gid、tileset 列数);坏 JSON → `nullopt`;缺文件 → `nullopt`;`orientation != orthogonal` → `nullopt`。
 
 ### WARP 像素回读(`me_gpu_tests`)
-- 渲染一张 2 层小地图到离屏 RT,回读断言:已知 gid 的瓦片像素颜色出现在预期屏幕位置;空 gid 处为清屏色;`SpriteBatch::DrawCallCount()` == 非空层数(合批生效)。
+- 渲染一张 2 层小地图到离屏 RT,回读断言:已知 gid 的瓦片像素颜色出现在预期屏幕位置;空 gid 处为清屏色;`SpriteBatch::DrawCallCount()` == 1(单 tileset 多层全部合成 1 个 drawcall,合批生效)。
 
 ### sandbox 目视
 - 加载真实 `assets/maps/demo.tmj` + `assets/textures/tileset.png`,相机 WASD 平移、Q/E 缩放,目视确认地图正立、层叠正确、裁剪无缝。
@@ -100,7 +100,7 @@
 
 - [ ] `LoadTiledMap` 正确解析样例地图,异常输入全部安全返回 `nullopt`(WSL 红绿)。
 - [ ] `TileLayout` / Y 翻转 / 可见范围三组纯函数单测通过。
-- [ ] WARP:多层地图像素回读断言通过,drawcall 数 == 非空层数。
+- [ ] WARP:多层地图像素回读断言通过,drawcall 数 == 1(单 tileset 全合批)。
 - [ ] sandbox:真机加载地图,相机平移/缩放目视正确。
 - [ ] `third_party`、各模块 `CMakeLists.txt` 与 README、`docs/PROGRESS.md` 同步更新。
 
