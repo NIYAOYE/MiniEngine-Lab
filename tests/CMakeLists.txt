@@ -31,6 +31,7 @@ add_executable(me_tests
     toolapi/test_tool_result.cpp
     toolapi/test_permission.cpp
     toolapi/test_schema_validator.cpp
+    toolapi/test_invocation_log.cpp
 )
 
 target_link_libraries(me_tests PRIVATE doctest::doctest me_core me_platform me_rhi_cpu me_assets me_scene me_command me_toolapi)
