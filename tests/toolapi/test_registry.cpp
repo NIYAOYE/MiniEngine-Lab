@@ -69,23 +69,35 @@ TEST_CASE("Registry:Invoke 流水线错误码与副作用") {
         auto r = reg.Invoke("nope", {{"x", 1}}, CallerRole::Editor, ctx);
         CHECK(r.code == ToolErrorCode::UnknownTool);
         CHECK(runs == 0);
+        CHECK(r.invocationId == 1);
+        CHECK(log.Size() == 1);
     }
     SUBCASE("PermissionDenied:Agent 调 EditorOnly") {
         auto r = reg.Invoke("danger.tool", {{"x", 1}}, CallerRole::Agent, ctx);
         CHECK(r.code == ToolErrorCode::PermissionDenied);
         CHECK(runs == 0);
+        // 失败路径也必须进审计日志并回填 invocationId
+        CHECK(r.invocationId == 1);
+        CHECK(log.Size() == 1);
+        CHECK(log.Entries()[0].code == ToolErrorCode::PermissionDenied);
     }
     SUBCASE("InvalidParams:缺 required") {
         auto r = reg.Invoke("safe.tool", {{"y", 1}}, CallerRole::Agent, ctx);
         CHECK(r.code == ToolErrorCode::InvalidParams);
         CHECK(r.data["errors"].size() >= 1);
         CHECK(runs == 0);
+        // 校验失败同样记录,审计完整
+        CHECK(r.invocationId == 1);
+        CHECK(log.Size() == 1);
+        CHECK(log.Entries()[0].code == ToolErrorCode::InvalidParams);
     }
-    SUBCASE("dryRun 零副作用") {
+    SUBCASE("dryRun 零副作用但仍记录") {
         auto r = reg.Invoke("safe.tool", {{"x", 1}}, CallerRole::Agent, ctx, /*dryRun=*/true);
         CHECK(r.ok);
         CHECK(r.data["preview"] == "would run");
         CHECK(runs == 0);
+        CHECK(log.Size() == 1);
+        CHECK(log.Entries()[0].dryRun == true);
     }
     SUBCASE("run 成功并记录 invocationId") {
         auto r = reg.Invoke("safe.tool", {{"x", 42}}, CallerRole::Agent, ctx);
