@@ -25,6 +25,7 @@ struct Window::Impl {
     int height = 0;
     bool shouldClose = false;
     InputState* input = nullptr; // 可选:注册后接收键消息
+    Window::WndProcHook wndProcHook = nullptr; // 可选:外部消息钩子(ImGui 等)
 };
 
 // 把 HWND 的 userdata 指向 Impl,从而在静态 WndProc 中取回实例状态。
@@ -37,6 +38,17 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpara
     }
     auto* impl = reinterpret_cast<Window::Impl*>(
         ::GetWindowLongPtrW(hwnd, GWLP_USERDATA));
+
+    // 消息钩子(供 ImGui 等外部后端拦截);钩子返回 true 则消费该消息
+    if (impl && impl->wndProcHook) {
+        // 转为裸类型传出;ImGui 处理器在 sandbox 侧 reinterpret 回 HWND/WPARAM/LPARAM。
+        if (impl->wndProcHook(hwnd, msg,
+                              static_cast<unsigned long long>(wparam),
+                              static_cast<long long>(lparam))) {
+            return TRUE; // 钩子已消费
+        }
+    }
+
     if (impl != nullptr) {
         switch (msg) {
         case WM_CLOSE:
@@ -114,5 +126,6 @@ int Window::Width() const { return m_impl->width; }
 int Window::Height() const { return m_impl->height; }
 void* Window::NativeHandle() const { return static_cast<void*>(m_impl->hwnd); }
 void Window::SetInput(InputState* input) { m_impl->input = input; }
+void Window::SetWndProcHook(WndProcHook hook) { m_impl->wndProcHook = hook; }
 
 } // namespace me::platform

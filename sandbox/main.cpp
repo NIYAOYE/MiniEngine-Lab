@@ -1,3 +1,4 @@
+#include <cstdio> // std::snprintf(Hierarchy 面板实体标签)
 #include <memory>
 #include <vector>
 
@@ -32,7 +33,25 @@
 
 #include <d3d12.h>
 
+// M7: ToolAPI + Editor stack
+#include "me/command/CommandStack.h"
+#include "me/toolapi/ToolRegistry.h"
+#include "me/toolapi/ToolContext.h"
+#include "me/toolapi/tools/BuiltinTools.h"
+#include "me/editor/EditorController.h"
+
+// M7: Dear ImGui (DX12 backend + Win32 backend)
+#include "imgui.h"
+#include "backends/imgui_impl_win32.h"
+#include "backends/imgui_impl_dx12.h"
+#include <windows.h>
+
 using namespace me;
+
+// ImGui 的 Win32 消息处理器由后端导出,但 imgui_impl_win32.h 故意把声明放在 #if 0
+// 内(避免强拉 <windows.h> 依赖),要求使用方在自己的 .cpp 里前置声明。此处声明在
+// 全局命名空间(不可放进匿名 namespace,否则链接到不存在的本地符号 → LNK2019)。
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND, UINT, WPARAM, LPARAM);
 
 namespace {
 constexpr int kWindowWidth = 1280;
@@ -55,6 +74,21 @@ void Transition(ID3D12GraphicsCommandList* cmd, ID3D12Resource* res,
 }
 
 float Clamp(float v, float lo, float hi) { return v < lo ? lo : (v > hi ? hi : v); }
+
+/** @brief 适配 platform::Window::WndProcHook 裸类型签名到 ImGui Win32 处理器。
+ *         返回 true 表示该消息已被 ImGui 消费,WndProc 不再继续默认处理。
+ *  注:ImGui_ImplWin32_WndProcHandler 在本文件全局命名空间前置声明(见上),
+ *  故此处用 :: 限定调用,链接到 imgui 后端导出的全局符号。 */
+bool ImGuiWndProcHook(void* hwnd, unsigned int msg,
+                      unsigned long long wparam, long long lparam) {
+    return ::ImGui_ImplWin32_WndProcHandler(reinterpret_cast<HWND>(hwnd), msg,
+                                            static_cast<WPARAM>(wparam),
+                                            static_cast<LPARAM>(lparam)) != 0;
+}
+
+/// M7 ImGui 帧并发数(与交换链双缓冲对齐,每帧录制时 ImGui 需知道最大并发帧数)。
+constexpr int kImGuiFramesInFlight = 2;
+
 } // namespace
 
 int main() {
@@ -157,10 +191,111 @@ int main() {
     // 当前缩放值,由 Q/E 调整后写入 CameraComponent。
     float zoom = 1.0f;
 
+    // —— M7: ToolAPI + 编辑器栈 ——
+    me::toolapi::ToolRegistry registry;
+    me::toolapi::RegisterBuiltinTools(registry);
+    me::command::CommandStack cmdStack;
+    me::toolapi::ToolInvocationLog toolLog;
+    me::toolapi::ToolContext toolCtx{scene, cmdStack, toolLog};
+    me::editor::EditorController editor(registry, toolCtx);
+    editor.RefreshHierarchy();
+
+    // —— ImGui 初始化 ——
+    // tileset 纹理已占用 srvHeap 槽 0;ImGui 字体 SRV 顺序取下一槽(bump-allocate)。
+    auto fontSrv = srvHeap->Allocate(); // slot 1:CPU+GPU 句柄均有效(shader-visible 堆)
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGui::StyleColorsDark();
+    ImGui_ImplWin32_Init(window->NativeHandle());
+    ImGui_ImplDX12_Init(device->Device(), kImGuiFramesInFlight,
+                        DXGI_FORMAT_R8G8B8A8_UNORM, srvHeap->Heap(),
+                        fontSrv.cpu, fontSrv.gpu);
+    // 注册 WndProc 钩子:ImGui 需先于游戏逻辑处理输入消息(鼠标/键盘)。
+    window->SetWndProcHook(&ImGuiWndProcHook);
+    // 编辑器可见状态(Space 键切换,不与 WASD/QE/Escape 冲突)。
+    bool editorVisible = true;
+
     while (!window->ShouldClose()) {
         input.NewFrame();
         window->PumpMessages();
         if (input.WasPressed(platform::KeyCode::Escape)) break;
+
+        // —— M7: ImGui 新帧 + 编辑器面板(所有变更经 EditorController → Tool API)——
+        ImGui_ImplDX12_NewFrame();
+        ImGui_ImplWin32_NewFrame();
+        ImGui::NewFrame();
+        // Space 键切换编辑器可见(Escape 已用于退出;WASD/QE 用于移动/缩放)。
+        if (input.WasPressed(platform::KeyCode::Space)) editorVisible = !editorVisible;
+        if (editorVisible) {
+            // ── Hierarchy 面板 ──────────────────────────────────────────────
+            ImGui::Begin("Hierarchy");
+            if (ImGui::Button("Create")) { editor.CreateEntity(); }
+            ImGui::SameLine();
+            if (ImGui::Button("Destroy") && editor.HasSelection()) {
+                editor.DestroySelected();
+            }
+            ImGui::Separator();
+            for (const auto& row : editor.Hierarchy()) {
+                char label[32];
+                std::snprintf(label, sizeof(label), "Entity #%llu",
+                              static_cast<unsigned long long>(row.id)); // EntityId=uint64
+                if (ImGui::Selectable(label, editor.Selected() == row.id)) {
+                    editor.Select(row.id);
+                    editor.InspectSelected();
+                }
+            }
+            ImGui::End();
+
+            // ── Inspector 面板 ───────────────────────────────────────────────
+            ImGui::Begin("Inspector");
+            if (editor.HasInspected()) {
+                me::Transform2D t = editor.Inspected().localTransform;
+                float pos[2] = {t.position.x, t.position.y};
+                float scl[2] = {t.scale.x, t.scale.y};
+                bool changed = false;
+                changed |= ImGui::DragFloat2("position", pos, 1.0f);
+                changed |= ImGui::DragFloat("rotation", &t.rotation, 0.01f);
+                changed |= ImGui::DragFloat2("scale", scl, 0.01f);
+                if (changed) {
+                    t.position = me::Vector2{pos[0], pos[1]};
+                    t.scale    = me::Vector2{scl[0], scl[1]};
+                    editor.ApplyTransform(t);
+                }
+            } else {
+                ImGui::TextUnformatted("(no selection)");
+            }
+            ImGui::Separator();
+            if (ImGui::Button("Undo") && editor.CanUndo()) editor.Undo();
+            ImGui::SameLine();
+            if (ImGui::Button("Redo") && editor.CanRedo()) editor.Redo();
+            ImGui::End();
+
+            // ── Stats 面板(运行时遥测;非 Tool 数据,见 spec §1.2 边界)───────
+            ImGui::Begin("Stats");
+            ImGui::Text("entities: %d", static_cast<int>(editor.Hierarchy().size()));
+            ImGui::Text("frame: %.2f ms", 1000.0f / ImGui::GetIO().Framerate);
+            ImGui::End();
+
+            // ── Log 面板 ────────────────────────────────────────────────────
+            ImGui::Begin("Log");
+            if (ImGui::Button("Refresh")) editor.RefreshLog();
+            ImGui::Separator();
+            for (const auto& lr : editor.Log()) {
+                ImGui::Text("#%llu %s [%s]",
+                            static_cast<unsigned long long>(lr.invocationId),
+                            lr.toolName.c_str(), lr.code.c_str());
+            }
+            ImGui::End();
+
+            // ── 错误条(Editor 调用失败时显示;绝不静默)────────────────────
+            if (editor.HasError()) {
+                ImGui::Begin("Editor Error");
+                ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "%s",
+                                   editor.LastError().c_str());
+                if (ImGui::Button("Clear")) editor.ClearError();
+                ImGui::End();
+            }
+        }
 
         // 1) 运行时逻辑:直调 Scene API 改实体(高频路径,不经 Tool)。
         //    WASD 移动 player 局部变换;相机为其子节点,自动跟随。
@@ -234,6 +369,11 @@ int main() {
         }
         batch->End(cmd);
 
+        // M7: ImGui 绘制录入同一命令列表(srvHeap 已 SetDescriptorHeaps;
+        //     ImGui 字体 SRV 在同一堆内,无需额外 Set)。必须在 PRESENT 转换之前。
+        ImGui::Render();
+        ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), cmd);
+
         Transition(cmd, back, D3D12_RESOURCE_STATE_RENDER_TARGET,
                    D3D12_RESOURCE_STATE_PRESENT);
         ctx->End();
@@ -244,5 +384,11 @@ int main() {
     }
 
     fence->Flush(device->Queue());
+
+    // M7: ImGui 清理(GPU 空闲后、资源销毁前)。
+    ImGui_ImplDX12_Shutdown();
+    ImGui_ImplWin32_Shutdown();
+    ImGui::DestroyContext();
+
     return 0;
 }
