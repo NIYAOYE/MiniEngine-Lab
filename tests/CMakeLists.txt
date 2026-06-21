@@ -24,9 +24,10 @@ add_executable(me_tests
     scene/test_component_storage.cpp
     scene/test_render_system.cpp
     scene/test_camera_system.cpp
+    command/test_command_stack.cpp
 )
 
-target_link_libraries(me_tests PRIVATE doctest::doctest me_core me_platform me_rhi_cpu me_assets me_scene)
+target_link_libraries(me_tests PRIVATE doctest::doctest me_core me_platform me_rhi_cpu me_assets me_scene me_command)
 
 target_include_directories(me_tests PRIVATE ${CMAKE_SOURCE_DIR}/engine/renderer/include)
 
