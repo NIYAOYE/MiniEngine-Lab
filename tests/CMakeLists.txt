@@ -25,6 +25,7 @@ add_executable(me_tests
     scene/test_render_system.cpp
     scene/test_camera_system.cpp
     command/test_command_stack.cpp
+    command/test_create_entity_cmd.cpp
 )
 
 target_link_libraries(me_tests PRIVATE doctest::doctest me_core me_platform me_rhi_cpu me_assets me_scene me_command)

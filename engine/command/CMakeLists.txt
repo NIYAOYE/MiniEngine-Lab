@@ -1,5 +1,6 @@
 add_library(me_command STATIC
     src/CommandStack.cpp
+    src/CreateEntityCmd.cpp
 )
 target_include_directories(me_command PUBLIC include)
 target_compile_features(me_command PUBLIC cxx_std_17)
