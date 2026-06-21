@@ -82,4 +82,20 @@ void EditorController::CreateEntity() {
     }
 }
 
+void EditorController::ApplyTransform(const me::Transform2D& t) {
+    if (!HasSelection()) {
+        m_lastError = "ApplyTransform: no selection";
+        return;
+    }
+    const nlohmann::json params = {
+        {"id", m_selected},
+        {"position", {{"x", t.position.x}, {"y", t.position.y}}},
+        {"rotation", t.rotation},
+        {"scale", {{"x", t.scale.x}, {"y", t.scale.y}}},
+    };
+    const me::toolapi::ToolResult r = invoke("entity.set_transform", params);
+    if (!r.ok) return;
+    InspectSelected();
+}
+
 } // namespace me::editor

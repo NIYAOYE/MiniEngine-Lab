@@ -1,6 +1,7 @@
 #include <doctest/doctest.h>
 
 #include "me/command/CommandStack.h"
+#include "me/core/Vector2.h"
 #include "me/editor/EditorController.h"
 #include "me/scene/Scene.h"
 #include "me/toolapi/ToolContext.h"
@@ -79,4 +80,25 @@ TEST_CASE("EditorController:CreateEntity 实体+1、选中新实体、Hierarchy 
     CHECK(f.ctrl.Selected() == f.ctrl.Hierarchy()[0].id);
     CHECK(f.ctrl.HasInspected());
     CHECK_FALSE(f.ctrl.HasError());
+}
+
+TEST_CASE("EditorController:ApplyTransform 写入并经 inspect 读回") {
+    Fixture f;
+    f.ctrl.CreateEntity();
+    me::Transform2D t;
+    t.position = me::Vector2{12.0f, -3.0f};
+    t.rotation = 1.5f;
+    t.scale = me::Vector2{2.0f, 2.0f};
+    f.ctrl.ApplyTransform(t);
+    REQUIRE(f.ctrl.HasInspected());
+    CHECK(f.ctrl.Inspected().localTransform.position.x == doctest::Approx(12.0f));
+    CHECK(f.ctrl.Inspected().localTransform.rotation == doctest::Approx(1.5f));
+    CHECK(f.ctrl.Inspected().localTransform.scale.y == doctest::Approx(2.0f));
+    CHECK_FALSE(f.ctrl.HasError());
+}
+
+TEST_CASE("EditorController:ApplyTransform 无选中 → LastError") {
+    Fixture f;
+    f.ctrl.ApplyTransform(me::Transform2D{});
+    CHECK(f.ctrl.HasError());
 }
