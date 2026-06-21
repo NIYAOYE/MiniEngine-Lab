@@ -36,3 +36,28 @@ add_library(nlohmann_json INTERFACE)
 add_library(nlohmann_json::nlohmann_json ALIAS nlohmann_json)
 target_include_directories(nlohmann_json INTERFACE ${nlohmann_json_SOURCE_DIR}/include)
 # 提供 target: nlohmann_json::nlohmann_json
+
+# Dear ImGui:调试 GUI / ToolAPI 客户端(M7)。仅 Windows 构建(DX12+Win32 后端)。
+# 用 release tarball URL 而非 git clone,避免全量历史(沿用 nlohmann 教训)。
+if(WIN32)
+    FetchContent_Declare(
+        imgui
+        URL https://github.com/ocornut/imgui/archive/refs/tags/v1.91.5.tar.gz
+    )
+    FetchContent_MakeAvailable(imgui)
+
+    add_library(imgui STATIC
+        ${imgui_SOURCE_DIR}/imgui.cpp
+        ${imgui_SOURCE_DIR}/imgui_draw.cpp
+        ${imgui_SOURCE_DIR}/imgui_tables.cpp
+        ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+        ${imgui_SOURCE_DIR}/backends/imgui_impl_win32.cpp
+        ${imgui_SOURCE_DIR}/backends/imgui_impl_dx12.cpp
+    )
+    target_include_directories(imgui PUBLIC
+        ${imgui_SOURCE_DIR}
+        ${imgui_SOURCE_DIR}/backends)
+    target_compile_features(imgui PUBLIC cxx_std_17)
+    # DX12 后端所需系统库。
+    target_link_libraries(imgui PUBLIC d3d12 dxgi)
+endif()
