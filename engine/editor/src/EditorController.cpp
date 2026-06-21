@@ -50,4 +50,25 @@ void EditorController::RefreshHierarchy() {
     }
 }
 
+void EditorController::Select(me::scene::EntityId id) { m_selected = id; }
+
+void EditorController::InspectSelected() {
+    m_hasInspected = false;
+    if (!HasSelection()) return;
+    const me::toolapi::ToolResult r = invoke("scene.get_entity", {{"id", m_selected}});
+    if (!r.ok) return;
+    EntityDetails d;
+    d.id = m_selected;
+    if (!ReadTransform(r.data, d.localTransform)) {
+        m_lastError = "malformed get_entity response";
+        return;
+    }
+    d.parentId = r.data.value("parentId", me::scene::EntityId{0});
+    if (r.data.contains("children"))
+        for (const nlohmann::json& c : r.data["children"])
+            d.children.push_back(c.get<me::scene::EntityId>());
+    m_inspected = d;
+    m_hasInspected = true;
+}
+
 } // namespace me::editor
