@@ -1,5 +1,6 @@
 add_library(me_toolapi STATIC
     src/ToolResult.cpp
+    src/SchemaValidator.cpp
 )
 target_include_directories(me_toolapi PUBLIC include)
 target_compile_features(me_toolapi PUBLIC cxx_std_17)
