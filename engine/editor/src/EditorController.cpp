@@ -1,5 +1,8 @@
 #include "me/editor/EditorController.h"
 
+#include "me/command/CommandResult.h"
+#include "me/command/CommandStack.h"
+
 namespace me::editor {
 namespace {
 
@@ -108,6 +111,46 @@ void EditorController::DestroySelected() {
     m_selected = kInvalidEntityId;
     m_hasInspected = false;
     RefreshHierarchy();
+}
+
+bool EditorController::CanUndo() const { return m_ctx.commands.canUndo(); }
+bool EditorController::CanRedo() const { return m_ctx.commands.canRedo(); }
+
+void EditorController::reconcileSelection() {
+    if (!HasSelection()) {
+        m_hasInspected = false;
+        return;
+    }
+    for (const EntityRow& row : m_hierarchy) {
+        if (row.id == m_selected) {
+            InspectSelected();
+            return;
+        }
+    }
+    m_selected = kInvalidEntityId;
+    m_hasInspected = false;
+}
+
+void EditorController::Undo() {
+    const me::command::CommandResult res = m_ctx.commands.undo(m_ctx.scene);
+    if (!res.ok) {
+        m_lastError = "undo: " + res.message;
+        return;
+    }
+    m_lastError.clear();
+    RefreshHierarchy();   // 内部失败会写 LastError;此处成功路径不覆盖
+    reconcileSelection();
+}
+
+void EditorController::Redo() {
+    const me::command::CommandResult res = m_ctx.commands.redo(m_ctx.scene);
+    if (!res.ok) {
+        m_lastError = "redo: " + res.message;
+        return;
+    }
+    m_lastError.clear();
+    RefreshHierarchy();
+    reconcileSelection();
 }
 
 } // namespace me::editor

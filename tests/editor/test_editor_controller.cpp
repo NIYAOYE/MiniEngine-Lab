@@ -119,3 +119,31 @@ TEST_CASE("EditorController:DestroySelected 无选中 → LastError") {
     f.ctrl.DestroySelected();
     CHECK(f.ctrl.HasError());
 }
+
+TEST_CASE("EditorController:Undo 撤销 create → 实体消失、选中失效被清") {
+    Fixture f;
+    f.ctrl.CreateEntity();
+    REQUIRE(f.ctrl.Hierarchy().size() == 1);
+    REQUIRE(f.ctrl.CanUndo());
+    f.ctrl.Undo();
+    CHECK(f.ctrl.Hierarchy().empty());
+    CHECK_FALSE(f.ctrl.HasSelection()); // 被撤销实体不再存活 → 选中清空
+    CHECK_FALSE(f.ctrl.HasError());
+    CHECK(f.ctrl.CanRedo());
+}
+
+TEST_CASE("EditorController:Redo 重做 create → 实体回来") {
+    Fixture f;
+    f.ctrl.CreateEntity();
+    f.ctrl.Undo();
+    f.ctrl.Redo();
+    CHECK(f.ctrl.Hierarchy().size() == 1);
+    CHECK_FALSE(f.ctrl.HasError());
+}
+
+TEST_CASE("EditorController:空栈 Undo → LastError、不崩") {
+    Fixture f;
+    CHECK_FALSE(f.ctrl.CanUndo());
+    f.ctrl.Undo();
+    CHECK(f.ctrl.HasError());
+}
