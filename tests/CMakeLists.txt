@@ -35,6 +35,7 @@ add_executable(me_tests
     toolapi/test_registry.cpp
     toolapi/test_query_tools.cpp
     toolapi/test_mutation_tools.cpp
+    toolapi/test_builtin_integration.cpp
 )
 
 target_link_libraries(me_tests PRIVATE doctest::doctest me_core me_platform me_rhi_cpu me_assets me_scene me_command me_toolapi)
