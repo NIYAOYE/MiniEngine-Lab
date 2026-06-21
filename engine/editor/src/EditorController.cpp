@@ -153,4 +153,18 @@ void EditorController::Redo() {
     reconcileSelection();
 }
 
+void EditorController::RefreshLog() {
+    m_log.clear();
+    const me::toolapi::ToolResult r = invoke("log.read", nlohmann::json::object());
+    if (!r.ok || !r.data.contains("invocations")) return;
+    for (const nlohmann::json& e : r.data["invocations"]) {
+        LogRow row;
+        row.invocationId = e.value("id", std::uint64_t{0});
+        row.toolName = e.value("tool", std::string{});
+        row.ok = e.value("ok", true);
+        row.code = e.value("code", std::string{});
+        m_log.push_back(std::move(row));
+    }
+}
+
 } // namespace me::editor

@@ -147,3 +147,15 @@ TEST_CASE("EditorController:空栈 Undo → LastError、不崩") {
     f.ctrl.Undo();
     CHECK(f.ctrl.HasError());
 }
+
+TEST_CASE("EditorController:RefreshLog 反映此前工具调用审计") {
+    Fixture f;
+    f.ctrl.CreateEntity(); // 经 create_entity + list_entities + get_entity 多次 invoke
+    f.ctrl.RefreshLog();
+    REQUIRE_FALSE(f.ctrl.Log().empty());
+    // 最近一条记录应有非空 toolName 与 invocationId 单调>0。
+    const LogRow& last = f.ctrl.Log().back();
+    CHECK(last.invocationId > 0);
+    CHECK_FALSE(last.toolName.empty());
+    CHECK_FALSE(f.ctrl.HasError());
+}
