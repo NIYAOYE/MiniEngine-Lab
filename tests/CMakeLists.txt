@@ -18,13 +18,19 @@ add_executable(me_tests
     assets/test_tiled_loader.cpp
     render/test_camera.cpp
     scene/test_entity.cpp
+    scene/test_entity_id.cpp
+    scene/test_component_snapshot.cpp
     scene/test_transform_hierarchy.cpp
     scene/test_component_storage.cpp
     scene/test_render_system.cpp
     scene/test_camera_system.cpp
+    command/test_command_stack.cpp
+    command/test_create_entity_cmd.cpp
+    command/test_set_transform_cmd.cpp
+    command/test_destroy_entity_cmd.cpp
 )
 
-target_link_libraries(me_tests PRIVATE doctest::doctest me_core me_platform me_rhi_cpu me_assets me_scene)
+target_link_libraries(me_tests PRIVATE doctest::doctest me_core me_platform me_rhi_cpu me_assets me_scene me_command)
 
 target_include_directories(me_tests PRIVATE ${CMAKE_SOURCE_DIR}/engine/renderer/include)
 

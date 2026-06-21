@@ -34,6 +34,8 @@ Entity Scene::CreateEntity() {
     s.children.clear();
     s.world = me::Matrix4x4{};
     s.worldDirty = true;
+    s.id = m_nextId++;
+    m_idToIndex.emplace(s.id, index);
     ++m_aliveCount;
     return Entity{index, s.generation};
 }
@@ -41,6 +43,9 @@ Entity Scene::CreateEntity() {
 void Scene::DestroyEntity(Entity e) {
     Slot* s = SlotOf(e);
     if (s == nullptr) return; // 失效句柄:安全无操作
+
+    // 若被销毁实体正是活动相机,立即清除,防止 m_activeCamera 残留悬垂句柄。
+    if (m_activeCamera == e) m_activeCamera = Entity::Invalid();
 
     // 先递归销毁子树(复制子列表,避免遍历中被修改)。
     const std::vector<Entity> kids = s->children;
@@ -65,6 +70,8 @@ void Scene::DestroyEntity(Entity e) {
     // 组件清理钩子(Task 3 实现);此处先声明,Task 3 填充。
     RemoveAllComponents(e);
 
+    m_idToIndex.erase(slot.id);
+    slot.id = 0;
     slot.alive = false;
     slot.children.clear();
     slot.parent = Entity::Invalid();
@@ -74,6 +81,45 @@ void Scene::DestroyEntity(Entity e) {
 }
 
 bool Scene::IsAlive(Entity e) const { return SlotOf(e) != nullptr; }
+
+EntityId Scene::IdOf(Entity e) const {
+    const Slot* s = SlotOf(e);
+    return s ? s->id : 0;
+}
+
+Entity Scene::Resolve(EntityId id) const {
+    if (id == 0) return Entity::Invalid();
+    auto it = m_idToIndex.find(id);
+    if (it == m_idToIndex.end()) return Entity::Invalid();
+    const std::uint32_t index = it->second;
+    return Entity{index, m_slots[index].generation};
+}
+
+Entity Scene::CreateEntityWithId(EntityId id) {
+    ME_ASSERT_MSG(id != 0, "CreateEntityWithId: id 不能为 0");
+    ME_ASSERT_MSG(m_idToIndex.find(id) == m_idToIndex.end(),
+                  "CreateEntityWithId: id 当前已存活");
+    std::uint32_t index;
+    if (!m_freeList.empty()) {
+        index = m_freeList.back();
+        m_freeList.pop_back();
+    } else {
+        index = static_cast<std::uint32_t>(m_slots.size());
+        m_slots.emplace_back();
+    }
+    Slot& s = m_slots[index];
+    s.alive = true;
+    s.local = me::Transform2D{};
+    s.parent = Entity::Invalid();
+    s.children.clear();
+    s.world = me::Matrix4x4{};
+    s.worldDirty = true;
+    s.id = id;
+    m_idToIndex.emplace(id, index);
+    if (id >= m_nextId) m_nextId = id + 1; // 保证后续分配不与恢复的 id 冲突
+    ++m_aliveCount;
+    return Entity{index, s.generation};
+}
 
 std::vector<Entity> Scene::AliveEntities() const {
     std::vector<Entity> out;
@@ -86,6 +132,21 @@ std::vector<Entity> Scene::AliveEntities() const {
 
 void Scene::RemoveAllComponents(Entity e) {
     for (auto& kv : m_stores) kv.second->Remove(e);
+}
+
+std::vector<std::unique_ptr<IComponentSnapshot>> Scene::CaptureComponents(Entity e) {
+    ME_ASSERT_MSG(IsAlive(e), "CaptureComponents: 实体已失效");
+    std::vector<std::unique_ptr<IComponentSnapshot>> out;
+    for (auto& kv : m_stores) {
+        if (auto snap = kv.second->Capture(e)) out.push_back(std::move(snap));
+    }
+    return out;
+}
+
+void Scene::RestoreComponents(
+    Entity e, const std::vector<std::unique_ptr<IComponentSnapshot>>& snaps) {
+    // 空指针守护:契约上不应出现 null snap,但防御性跳过避免静默解引用 UB。
+    for (const auto& snap : snaps) { if (snap) snap->RestoreTo(e); }
 }
 
 void Scene::SetLocalTransform(Entity e, const me::Transform2D& t) {

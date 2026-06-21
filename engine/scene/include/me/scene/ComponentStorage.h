@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <unordered_map>
 #include <vector>
 
@@ -9,6 +10,17 @@
 #include "me/scene/Entity.h"
 
 namespace me::scene {
+
+/// @brief 单个组件的只读快照:可把所记录的组件值重新写回某实体(供命令 Undo 还原)。
+class IComponentSnapshot {
+public:
+    virtual ~IComponentSnapshot() = default;
+    /// @brief 把快照里的组件值添加到实体 e(写回到产生本快照的存储)。
+    virtual void RestoreTo(Entity e) const = 0;
+};
+
+template <class T>
+class ComponentStorage; // 前置声明,供 Capture 返回 ComponentSnapshot<T>
 
 /// @brief 类型擦除的组件存储接口:Scene 据此在销毁实体时统一移除其组件。
 class IComponentStorage {
@@ -18,6 +30,8 @@ public:
     virtual void Remove(Entity e) = 0;
     /// @brief 该实体是否拥有此类组件。
     virtual bool Has(Entity e) const = 0;
+    /// @brief 若实体拥有该组件,返回其快照;否则返回 nullptr。
+    virtual std::unique_ptr<IComponentSnapshot> Capture(Entity e) = 0;
 };
 
 /**
@@ -73,6 +87,8 @@ public:
         m_sparse.erase(it);
     }
 
+    std::unique_ptr<IComponentSnapshot> Capture(Entity e) override;
+
     /// @brief 拥有该组件的实体(与 Items() 并行,供 System 遍历)。
     const std::vector<Entity>& Entities() const { return m_owners; }
     /// @brief 组件数据(与 Entities() 并行)。
@@ -85,5 +101,25 @@ private:
     std::vector<Entity> m_owners;                        // dense 拥有者(并行)
     std::unordered_map<std::uint32_t, std::size_t> m_sparse; // entity.index → dense
 };
+
+/// @brief 持有某组件值拷贝的快照;RestoreTo 时写回创建它的存储实例。
+template <class T>
+class ComponentSnapshot final : public IComponentSnapshot {
+public:
+    ComponentSnapshot(ComponentStorage<T>* store, const T& value)
+        : m_store(store), m_value(value) {}
+    void RestoreTo(Entity e) const override { m_store->Add(e, m_value); }
+
+private:
+    ComponentStorage<T>* m_store; // 非拥有:存储归 Scene,生命周期长于快照
+    T m_value;
+};
+
+template <class T>
+std::unique_ptr<IComponentSnapshot> ComponentStorage<T>::Capture(Entity e) {
+    auto it = m_sparse.find(e.index);
+    if (it == m_sparse.end() || m_owners[it->second] != e) return nullptr;
+    return std::make_unique<ComponentSnapshot<T>>(this, m_items[it->second]);
+}
 
 } // namespace me::scene

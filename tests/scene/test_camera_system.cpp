@@ -55,6 +55,28 @@ TEST_CASE("Camera:未显式设置活动相机时取第一个相机") {
     CHECK(view->center.x == doctest::Approx(10.0f).epsilon(kEps));
 }
 
+TEST_CASE("Scene:销毁活动相机实体后 ActiveCamera 失效不悬垂") {
+    Scene scene;
+    const Entity cam = MakeCamera(scene, 0.0f, 0.0f, 1.0f);
+    scene.SetActiveCamera(cam);
+    CHECK(scene.ActiveCamera() == cam);
+    scene.DestroyEntity(cam);
+    // 销毁后 ActiveCamera 必须已清除,不持有悬垂句柄。
+    CHECK_FALSE(scene.ActiveCamera().IsValid());
+}
+
+TEST_CASE("Scene:销毁含活动相机子节点的父实体后 ActiveCamera 失效不悬垂") {
+    Scene scene;
+    const Entity parent = scene.CreateEntity();
+    const Entity cam = MakeCamera(scene, 0.0f, 0.0f, 1.0f);
+    scene.SetParent(cam, parent);
+    scene.SetActiveCamera(cam);
+    CHECK(scene.ActiveCamera() == cam);
+    // 销毁父节点应连带销毁 cam,ActiveCamera 必须随之清除。
+    scene.DestroyEntity(parent);
+    CHECK_FALSE(scene.ActiveCamera().IsValid());
+}
+
 TEST_CASE("Camera:相机跟随父——世界位置含父平移") {
     Scene scene;
     const Entity player = scene.CreateEntity();
