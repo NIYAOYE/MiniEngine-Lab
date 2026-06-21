@@ -29,4 +29,5 @@ TEST_CASE("ToolResult:toJson 序列化 code 为字符串") {
     CHECK(j["code"] == "UnknownTool");
     CHECK(j["message"] == "no");
     CHECK(j["invocationId"] == 3);
+    CHECK(j["data"] == nlohmann::json::object());
 }

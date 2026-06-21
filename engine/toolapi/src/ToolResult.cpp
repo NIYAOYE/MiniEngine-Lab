@@ -11,7 +11,7 @@ const char* ToString(ToolErrorCode code) {
         case ToolErrorCode::PreconditionFailed: return "PreconditionFailed";
         case ToolErrorCode::ExecutionFailed:    return "ExecutionFailed";
     }
-    return "Ok"; // 不可达;穷尽 switch 后的默认
+    return "Unknown"; // 穷尽 switch 后的兜底:未知枚举不冒充 Ok
 }
 
 nlohmann::json ToolResult::toJson() const {
