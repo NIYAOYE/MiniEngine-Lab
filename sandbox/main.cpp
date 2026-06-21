@@ -70,16 +70,15 @@ void Transition(ID3D12GraphicsCommandList* cmd, ID3D12Resource* res,
 
 float Clamp(float v, float lo, float hi) { return v < lo ? lo : (v > hi ? hi : v); }
 
-// ImGui 提供的 Win32 消息处理器(由其后端导出)。
-extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND, UINT, WPARAM, LPARAM);
-
 /** @brief 适配 platform::Window::WndProcHook 裸类型签名到 ImGui Win32 处理器。
- *         返回 true 表示该消息已被 ImGui 消费,WndProc 不再继续默认处理。 */
+ *         返回 true 表示该消息已被 ImGui 消费,WndProc 不再继续默认处理。
+ *  注:ImGui_ImplWin32_WndProcHandler 由 imgui_impl_win32.h 在全局命名空间声明,
+ *  故此处用 :: 限定调用(不可在匿名命名空间内重声明,否则链接到不存在的本地符号)。 */
 bool ImGuiWndProcHook(void* hwnd, unsigned int msg,
                       unsigned long long wparam, long long lparam) {
-    return ImGui_ImplWin32_WndProcHandler(reinterpret_cast<HWND>(hwnd), msg,
-                                          static_cast<WPARAM>(wparam),
-                                          static_cast<LPARAM>(lparam)) != 0;
+    return ::ImGui_ImplWin32_WndProcHandler(reinterpret_cast<HWND>(hwnd), msg,
+                                            static_cast<WPARAM>(wparam),
+                                            static_cast<LPARAM>(lparam)) != 0;
 }
 
 /// M7 ImGui 帧并发数(与交换链双缓冲对齐,每帧录制时 ImGui 需知道最大并发帧数)。
