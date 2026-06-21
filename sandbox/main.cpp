@@ -1,3 +1,4 @@
+#include <cstdio> // std::snprintf(Hierarchy 面板实体标签)
 #include <memory>
 #include <vector>
 
