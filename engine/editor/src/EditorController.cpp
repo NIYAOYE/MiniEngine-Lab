@@ -98,4 +98,16 @@ void EditorController::ApplyTransform(const me::Transform2D& t) {
     InspectSelected();
 }
 
+void EditorController::DestroySelected() {
+    if (!HasSelection()) {
+        m_lastError = "DestroySelected: no selection";
+        return;
+    }
+    const me::toolapi::ToolResult r = invoke("scene.destroy_entity", {{"id", m_selected}});
+    if (!r.ok) return;
+    m_selected = kInvalidEntityId;
+    m_hasInspected = false;
+    RefreshHierarchy();
+}
+
 } // namespace me::editor

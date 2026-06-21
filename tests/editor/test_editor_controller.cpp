@@ -102,3 +102,20 @@ TEST_CASE("EditorController:ApplyTransform 无选中 → LastError") {
     f.ctrl.ApplyTransform(me::Transform2D{});
     CHECK(f.ctrl.HasError());
 }
+
+TEST_CASE("EditorController:DestroySelected 实体消失、选中清空") {
+    Fixture f;
+    f.ctrl.CreateEntity();
+    REQUIRE(f.ctrl.Hierarchy().size() == 1);
+    f.ctrl.DestroySelected();
+    CHECK(f.ctrl.Hierarchy().empty());
+    CHECK_FALSE(f.ctrl.HasSelection());
+    CHECK_FALSE(f.ctrl.HasInspected());
+    CHECK_FALSE(f.ctrl.HasError());
+}
+
+TEST_CASE("EditorController:DestroySelected 无选中 → LastError") {
+    Fixture f;
+    f.ctrl.DestroySelected();
+    CHECK(f.ctrl.HasError());
+}
