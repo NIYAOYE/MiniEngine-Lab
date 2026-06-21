@@ -132,6 +132,7 @@ void Scene::RemoveAllComponents(Entity e) {
 }
 
 std::vector<std::unique_ptr<IComponentSnapshot>> Scene::CaptureComponents(Entity e) {
+    ME_ASSERT_MSG(IsAlive(e), "CaptureComponents: 实体已失效");
     std::vector<std::unique_ptr<IComponentSnapshot>> out;
     for (auto& kv : m_stores) {
         if (auto snap = kv.second->Capture(e)) out.push_back(std::move(snap));
@@ -141,7 +142,8 @@ std::vector<std::unique_ptr<IComponentSnapshot>> Scene::CaptureComponents(Entity
 
 void Scene::RestoreComponents(
     Entity e, const std::vector<std::unique_ptr<IComponentSnapshot>>& snaps) {
-    for (const auto& snap : snaps) snap->RestoreTo(e);
+    // 空指针守护:契约上不应出现 null snap,但防御性跳过避免静默解引用 UB。
+    for (const auto& snap : snaps) { if (snap) snap->RestoreTo(e); }
 }
 
 void Scene::SetLocalTransform(Entity e, const me::Transform2D& t) {
