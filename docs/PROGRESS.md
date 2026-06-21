@@ -3,12 +3,12 @@
 > 跨会话进度索引。**每次有实质进展时更新本文件**:勾选里程碑、更新"当前状态"和"下一步"、追加决策记录。
 
 - **最后更新**:2026-06-21
-- **当前阶段**:M5 Command 中枢完成,下一步 M6 ToolAPI
+- **当前阶段**:M6 ToolAPI 完成,下一步 M7 Editor as Client
 - **方向**:2D/2.5D 农场模拟游戏引擎(C++/DX12 + Win32),引擎能力抽象为受控、可验证的 Agent-ready Tool API
 
 ## 一句话现状
 
-M1 精灵上屏已完成:Win32 Window/Input + RHI(GpuDevice/SwapChain/CommandContext/Fence/DescriptorHeap/GpuBuffer/GpuTexture/Shader/PSO)+ stb_image 纹理解码 + SpriteRenderer(根签名+PSO+单位四边形,经 MVP 绘制)。跨平台逻辑在 WSL 用 doctest 红绿;DX12/GPU 正确性由 WARP 软件适配器 + 离屏像素回读自动化把关(me_gpu_tests:设备/围栏、纹理上传往返、带纹理精灵渲染),并经 sandbox 真机目视确认(开窗、贴图正立、WASD 平移、ESC 退出)。M2 批渲染 + 正交相机已完成:SpriteBatch 按纹理合批 + OrthographicCamera + 8×5 多精灵 sandbox;WARP 多精灵/色调/srcRect 像素回读 + 相机 doctest + sandbox 目视验证。M3 瓦片地图已完成:TileLayout(gid→UV)/TileGeometry(col/row→worldRect)/Tileset/TileMapRenderer + nlohmann/json Tiled JSON 子集加载器(LoadTiledMap) + sandbox 数据驱动演示(12×8 地图、2 层、相机平移/缩放);WARP 像素回读 + doctest 单测 + sandbox 目视(pending-user)。M4 Scene + 组件已完成:Entity/Handle(index+generation)/Scene(生命周期/层级/脏标记) + Transform2D 父子层级 + IComponentStorage/ComponentStorage(sparse-set) + SpriteComponent/CameraComponent/TileMapComponent + TransformSystem/RenderSystem(RenderView 按层+Y 降序) + CameraView/ResolveActiveCamera;sandbox 用 Scene+System 驱动瓦片地面+精灵 prop+player(WASD)+相机跟随+Q/E 缩放;sandbox 目视 pending-user。M5 Command 中枢已完成:Scene 持久 EntityId 身份锚定(IdOf/Resolve/CreateEntityWithId)+ 类型擦除组件快照(CaptureComponents/RestoreComponents) + ICommand/CommandResult/CommandStack(标准 Undo/Redo 双栈,peek-then-pop,新 execute 清空 redo) + CreateEntityCmd/SetTransformCmd/DestroyEntityCmd(命令存 EntityId 而非裸 handle;Destroy 全子树+组件+active camera 还原);顺带修 Scene::DestroyEntity 悬垂 active camera;全程 CPU-only doctest,WSL 101/101 全绿。
+M1 精灵上屏已完成:Win32 Window/Input + RHI(GpuDevice/SwapChain/CommandContext/Fence/DescriptorHeap/GpuBuffer/GpuTexture/Shader/PSO)+ stb_image 纹理解码 + SpriteRenderer(根签名+PSO+单位四边形,经 MVP 绘制)。跨平台逻辑在 WSL 用 doctest 红绿;DX12/GPU 正确性由 WARP 软件适配器 + 离屏像素回读自动化把关(me_gpu_tests:设备/围栏、纹理上传往返、带纹理精灵渲染),并经 sandbox 真机目视确认(开窗、贴图正立、WASD 平移、ESC 退出)。M2 批渲染 + 正交相机已完成:SpriteBatch 按纹理合批 + OrthographicCamera + 8×5 多精灵 sandbox;WARP 多精灵/色调/srcRect 像素回读 + 相机 doctest + sandbox 目视验证。M3 瓦片地图已完成:TileLayout(gid→UV)/TileGeometry(col/row→worldRect)/Tileset/TileMapRenderer + nlohmann/json Tiled JSON 子集加载器(LoadTiledMap) + sandbox 数据驱动演示(12×8 地图、2 层、相机平移/缩放);WARP 像素回读 + doctest 单测 + sandbox 目视(pending-user)。M4 Scene + 组件已完成:Entity/Handle(index+generation)/Scene(生命周期/层级/脏标记) + Transform2D 父子层级 + IComponentStorage/ComponentStorage(sparse-set) + SpriteComponent/CameraComponent/TileMapComponent + TransformSystem/RenderSystem(RenderView 按层+Y 降序) + CameraView/ResolveActiveCamera;sandbox 用 Scene+System 驱动瓦片地面+精灵 prop+player(WASD)+相机跟随+Q/E 缩放;sandbox 目视 pending-user。M5 Command 中枢已完成:Scene 持久 EntityId 身份锚定(IdOf/Resolve/CreateEntityWithId)+ 类型擦除组件快照(CaptureComponents/RestoreComponents) + ICommand/CommandResult/CommandStack(标准 Undo/Redo 双栈,peek-then-pop,新 execute 清空 redo) + CreateEntityCmd/SetTransformCmd/DestroyEntityCmd(命令存 EntityId 而非裸 handle;Destroy 全子树+组件+active camera 还原);顺带修 Scene::DestroyEntity 悬垂 active camera;全程 CPU-only doctest,WSL 101/101 全绿。M6 ToolAPI 已完成:新增 me_toolapi 静态库(toolapi→command→scene→core + nlohmann/json 边界),含 ToolResult(五码错误模型 + JSON 序列化)+ 三层权限白名单(CallerRole/Permission/IsAllowed)+ 手写 JSON Schema 子集校验器(type/required/properties/minimum/maximum/enum,递归)+ ToolInvocation/ToolInvocationLog(单调 id 审计)+ ITool 接口 + ToolContext 受控门面(Scene&/CommandStack&/Log&,前置声明隔离)+ ToolRegistry 统一流水线(查找→白名单→Schema 校验→dryRun?→run→全路径记录回填 invocationId);首批 6 Tool:查询 scene.list_entities/scene.get_entity/log.read(AgentAllowed),变更经 CommandStack scene.create_entity[Automation]/scene.destroy_entity[EditorOnly]/entity.set_transform[Automation](dry-run 零副作用、PreconditionFailed、Undo 往返均测);全程 CPU-only doctest,WSL 129/129 全绿。
 
 ## 文档索引
 
@@ -17,6 +17,8 @@ M1 精灵上屏已完成:Win32 Window/Input + RHI(GpuDevice/SwapChain/CommandCon
 | [架构设计](superpowers/specs/2026-06-17-miniengine-design.md) | 权威设计文档:分层架构、2D 渲染、Tool API、Command、农场领域层、路线图 |
 | [M5 Command 设计](superpowers/specs/2026-06-20-m5-command-design.md) | M5 详设:EntityId 身份锚定、组件快照、ICommand/CommandStack、三命令 |
 | [ADR 0003](architecture/0003-m5-command.md) | M5 架构决策记录 |
+| [M6 ToolAPI 计划](superpowers/plans/2026-06-21-m6-toolapi.md) | M6 实现计划:9 任务 TDD(ToolResult/权限/Schema/审计/Registry/六 Tool) |
+| [ADR 0004](architecture/0004-m6-toolapi.md) | M6 架构决策记录:Schema 手写、Tool 范围、ToolContext 边界、变更经 Command、权限+审计 |
 | 本文件 `docs/PROGRESS.md` | 跨会话进度追踪 |
 | `../CLAUDE.md` | 项目定位与代码生成规则(本地文件,被 .gitignore 忽略) |
 
@@ -33,18 +35,18 @@ M1 精灵上屏已完成:Win32 Window/Input + RHI(GpuDevice/SwapChain/CommandCon
 | **M3 瓦片地图** | ☑ | Tileset + TileMap 渲染 + 从 JSON 加载地图;sandbox 数据驱动演示;sandbox 目视 pending-user |
 | **M4 Scene + 组件** | ☑ | Entity/Transform2D + Component + System;sandbox Scene 驱动演示;sandbox 目视 pending-user |
 | **M5 Command 中枢** | ☑ | ICommand + CommandStack(标准 Undo/Redo)+ CreateEntity/Destroy/SetTransform;EntityId 身份锚定 + 类型擦除组件快照;CPU-only doctest 101/101 全绿 |
-| M6 ToolAPI | ☐ | ToolRegistry + Tool + JSON Schema 校验 + dry-run + 日志 + 首批 Tool + 白名单 |
+| **M6 ToolAPI** | ☑ | me_toolapi:ToolRegistry 统一流水线 + ITool + ToolContext 受控门面 + 手写 JSON Schema 子集校验 + dry-run + 三层权限白名单 + ToolInvocation 审计;首批 6 Tool(3 query + 3 mutation 经 CommandStack 可 Undo);CPU-only doctest 129/129 全绿 |
 | M7 Editor as Client | ☐ | ImGui 面板(含瓦片地图编辑)改为通过 Tool API 操作 |
 | M8 农场领域层 | ☐ | 时间系统(天/季节)+ 作物生长 + 库存/物品(JSON)+ NPC 日程调度 |
 | M9+ 未来 | ☐ | 对话/配方数据驱动、2D 物理/碰撞、存档;未来 Agent/LLM 接入白名单 Tool |
 
 ## 下一步行动
 
-1. 对 **M6 ToolAPI** 调用 `writing-plans` 生成实现计划(ToolRegistry + Tool + JSON Schema 校验 + dry-run + 执行日志 + 首批 Tool + 白名单)。
-2. 变更型 Tool 经 `CommandStack` 执行,`CommandResult` 包装为 JSON `ToolResult`(衔接 M5)。
-3. 按计划实现并回写本文件进度。ToolAPI 主线(M6 + M7)是本项目区别于普通学习引擎的核心特色。
+1. 对 **M7 Editor as Client** 调用 `writing-plans` 生成实现计划:集成 Dear ImGui,Hierarchy / Inspector / TileMap 编辑 / Stats / Log 面板,**所有变更经 ToolAPI.invoke**,只读展示直接查询 —— 反向验证 M6 接口完备性。
+2. M7 落地过程中按需补齐 Tool:`entity.add_component` / `tilemap.paint` / `scene.save` / `scene.load`(各依赖组件编辑命令 / 瓦片编辑命令 / 场景序列化先行)。
+3. 按计划实现并回写本文件进度。ToolAPI 主线(M6 已成 + M7)是本项目区别于普通学习引擎的核心特色。
 
-> M5 收尾结转(非阻塞):DestroyEntityCmd 测试补 position.y 断言;describe() 节点数自动断言;`Handle::IsValid` 不校验 generation 的统一(更深层设计);以及 M4 结转的 RenderItem 哨兵统一 / RenderView→SpriteBatch 桥接迁出 sandbox 等(见各 ADR)。
+> M6 收尾结转(非阻塞,见 ADR 0004):`Make*Tool` 工厂定义行可统一升级为 `@brief`;schema `minimum:1` 可抽 EntityId 域常量;校验器嵌套 `required` 错误消息 framing 统一;`ToolInvocationLog::Entries/Size` 可加 noexcept。M5/M4 更早结转:`Handle::IsValid` 不校验 generation 的统一;RenderItem 哨兵统一 / RenderView→SpriteBatch 桥接迁出 sandbox(见各 ADR)。
 
 ## 关键决策记录(ADR 摘要)
 
@@ -88,9 +90,14 @@ M1 精灵上屏已完成:Win32 Window/Input + RHI(GpuDevice/SwapChain/CommandCon
 | 2026-06-21 | 组件快照 `RestoreTo(Entity)` 经存储指针回写(非回调 Scene) | 避免 `Scene.h↔ComponentStorage.h` 头文件循环;Capture/CaptureComponents 非 const |
 | 2026-06-21 | `Scene::DestroyEntity` 清除被销毁(子树)实体上的悬垂 `m_activeCamera` | 任意销毁路径都不应留下悬垂活动相机句柄,不变量归位 Scene 层而非命令代偿 |
 
+| 2026-06-21 | M6 JSON Schema 校验**手写最小子集**(type/required/properties/range/enum,递归),不引第三方库 | 契合最小依赖 + 不抛异常;首批 Tool schema 简单够用;schema 是 json 可序列化,适配未来 LLM |
+| 2026-06-21 | M6 首批 Tool 聚焦已落地能力(3 query + 3 mutation 复用 M5 三命令);add_component/tilemap.paint/save/load 推迟 | create→set_transform→destroy→undo 往返是接口完备性最强证明;其余依赖未落地子系统(YAGNI),同 ADR 0003 |
+| 2026-06-21 | Tool 只经注入的 `ToolContext{Scene&,CommandStack&,Log&}` 访问引擎;`ITool.h` 前置声明隔离 Scene/Command | 禁 Singleton/禁全局可变状态/依赖注入;受控边界可审 + 为 Agent 白名单收紧铺路;降低编译耦合 |
+| 2026-06-21 | 变更型 Tool 只经 `ctx.commands.execute` 落地;dry-run 零副作用(destroy/set_transform 先校验存活) | 变更经 CommandStack 自动获得 Undo,是 ToolAPI 受控性核心;dry-run+回滚+审计=Agent-ready 安全基础 |
+| 2026-06-21 | 三层权限白名单(query=AgentAllowed / create+set_transform=Automation / destroy=EditorOnly);每次 Invoke(含失败)都写审计日志并回填 invocationId | 以最小机制演示完整白名单裁决,为 Agent 只调 agent-allowed 铺路;全路径记录保证审计无盲区、绝不静默 |
+
 ## 待解决 / 开放问题
 
-- JSON Schema 校验具体选库或手写,M6 时确定。
 - 瓦片地图是否兼容 Tiled JSON 格式,M3 时确定。
 - 上传堆顶点/纹理为 M1 简化(可读性优先);仍延续,推迟到后续性能里程碑(M2 已确认不做默认堆迁移)。
 - M1 每帧 `fence->Flush` 全同步(无帧并行);仍延续,推迟到后续性能里程碑(M2 已确认不做帧并行)。

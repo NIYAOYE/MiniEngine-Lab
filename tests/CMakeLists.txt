@@ -28,9 +28,17 @@ add_executable(me_tests
     command/test_create_entity_cmd.cpp
     command/test_set_transform_cmd.cpp
     command/test_destroy_entity_cmd.cpp
+    toolapi/test_tool_result.cpp
+    toolapi/test_permission.cpp
+    toolapi/test_schema_validator.cpp
+    toolapi/test_invocation_log.cpp
+    toolapi/test_registry.cpp
+    toolapi/test_query_tools.cpp
+    toolapi/test_mutation_tools.cpp
+    toolapi/test_builtin_integration.cpp
 )
 
-target_link_libraries(me_tests PRIVATE doctest::doctest me_core me_platform me_rhi_cpu me_assets me_scene me_command)
+target_link_libraries(me_tests PRIVATE doctest::doctest me_core me_platform me_rhi_cpu me_assets me_scene me_command me_toolapi)
 
 target_include_directories(me_tests PRIVATE ${CMAKE_SOURCE_DIR}/engine/renderer/include)
 
