@@ -31,6 +31,12 @@ TEST_CASE("SetTransformCmd:execute 改变、undo 还原、redo 再变") {
 
     CHECK(stack.redo(scene).ok);
     CHECK(scene.LocalTransform(e).position.y == doctest::Approx(20.0f));
+
+    // redo→undo:m_captured 保证第二次 undo 仍还原到首次 execute 前的原值
+    CHECK(stack.undo(scene).ok);
+    CHECK(scene.LocalTransform(e).position.x == doctest::Approx(0.0f));
+    CHECK(scene.LocalTransform(e).position.y == doctest::Approx(0.0f));
+    CHECK(scene.LocalTransform(e).rotation == doctest::Approx(0.0f));
 }
 
 TEST_CASE("SetTransformCmd:对失活实体 execute 返回失败") {
