@@ -9,7 +9,8 @@ CommandResult CreateEntityCmd::execute(me::scene::Scene& scene) {
         m_id = scene.IdOf(e);
     } else {
         // redo:以原身份重建,保证后续命令对该 id 的引用仍然成立。
-        scene.CreateEntityWithId(m_id);
+        const me::scene::Entity e = scene.CreateEntityWithId(m_id);
+        if (!e.IsValid()) return CommandResult::Fail("CreateEntityCmd 重建实体失败");
     }
     return CommandResult::Ok("创建实体 #" + std::to_string(m_id));
 }
@@ -18,7 +19,7 @@ CommandResult CreateEntityCmd::undo(me::scene::Scene& scene) {
     const me::scene::Entity e = scene.Resolve(m_id);
     if (!e.IsValid()) return CommandResult::Fail("CreateEntityCmd::undo 实体已失效");
     scene.DestroyEntity(e);
-    return CommandResult::Ok();
+    return CommandResult::Ok("销毁实体 #" + std::to_string(m_id));
 }
 
 std::string CreateEntityCmd::describe() const {
