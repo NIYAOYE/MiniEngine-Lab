@@ -10,9 +10,9 @@ void RegisterBuiltinTools(ToolRegistry& registry) {
     registry.Register(MakeGetEntityTool());
     registry.Register(MakeLogReadTool());
     // 变更型
-    // TODO(Task 7/8): registry.Register(MakeCreateEntityTool());
-    // TODO(Task 7/8): registry.Register(MakeDestroyEntityTool());
-    // TODO(Task 7/8): registry.Register(MakeSetTransformTool());
+    registry.Register(MakeCreateEntityTool());
+    registry.Register(MakeDestroyEntityTool());
+    registry.Register(MakeSetTransformTool());
 }
 
 } // namespace me::toolapi
