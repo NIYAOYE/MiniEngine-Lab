@@ -48,6 +48,11 @@
 
 using namespace me;
 
+// ImGui 的 Win32 消息处理器由后端导出,但 imgui_impl_win32.h 故意把声明放在 #if 0
+// 内(避免强拉 <windows.h> 依赖),要求使用方在自己的 .cpp 里前置声明。此处声明在
+// 全局命名空间(不可放进匿名 namespace,否则链接到不存在的本地符号 → LNK2019)。
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND, UINT, WPARAM, LPARAM);
+
 namespace {
 constexpr int kWindowWidth = 1280;
 constexpr int kWindowHeight = 720;
@@ -72,8 +77,8 @@ float Clamp(float v, float lo, float hi) { return v < lo ? lo : (v > hi ? hi : v
 
 /** @brief 适配 platform::Window::WndProcHook 裸类型签名到 ImGui Win32 处理器。
  *         返回 true 表示该消息已被 ImGui 消费,WndProc 不再继续默认处理。
- *  注:ImGui_ImplWin32_WndProcHandler 由 imgui_impl_win32.h 在全局命名空间声明,
- *  故此处用 :: 限定调用(不可在匿名命名空间内重声明,否则链接到不存在的本地符号)。 */
+ *  注:ImGui_ImplWin32_WndProcHandler 在本文件全局命名空间前置声明(见上),
+ *  故此处用 :: 限定调用,链接到 imgui 后端导出的全局符号。 */
 bool ImGuiWndProcHook(void* hwnd, unsigned int msg,
                       unsigned long long wparam, long long lparam) {
     return ::ImGui_ImplWin32_WndProcHandler(reinterpret_cast<HWND>(hwnd), msg,
