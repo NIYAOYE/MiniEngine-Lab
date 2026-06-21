@@ -24,6 +24,8 @@ public:
     }
     ToolResult run(ToolContext& ctx, const nlohmann::json&) const override {
         auto cmd = std::make_unique<me::command::CreateEntityCmd>();
+        // raw 在 move 后仍有效:CommandStack 接管并持有已执行命令对象,
+        // 故 execute 之后读取 raw->CreatedId() 安全。
         me::command::CreateEntityCmd* raw = cmd.get();
         const auto res = ctx.commands.execute(std::move(cmd), ctx.scene);
         if (!res.ok)

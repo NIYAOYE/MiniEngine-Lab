@@ -55,9 +55,20 @@ TEST_CASE("MutationTools:destroy_entity EditorOnly + 缺失 PreconditionFailed")
                              CallerRole::Editor, f.ctx);
     CHECK(miss.code == ToolErrorCode::PreconditionFailed);
 
+    // dry-run 对缺失实体同样前置失败,且零副作用
+    auto dryMiss = f.reg.Invoke("scene.destroy_entity", {{"id", 4242}},
+                                CallerRole::Editor, f.ctx, /*dryRun=*/true);
+    CHECK(dryMiss.code == ToolErrorCode::PreconditionFailed);
+    CHECK(f.scene.AliveCount() == 1);
+
     auto ok = f.reg.Invoke("scene.destroy_entity", {{"id", id}}, CallerRole::Editor, f.ctx);
     CHECK(ok.ok);
     CHECK(f.scene.AliveCount() == 0);
+
+    // 经 CommandStack → 销毁可撤销,实体按原 id 还原
+    CHECK(f.stack.undo(f.scene).ok);
+    CHECK(f.scene.AliveCount() == 1);
+    CHECK(f.scene.IsAlive(f.scene.Resolve(id)));
 }
 
 TEST_CASE("MutationTools:set_transform 覆盖给定字段并可撤销") {
@@ -65,6 +76,13 @@ TEST_CASE("MutationTools:set_transform 覆盖给定字段并可撤销") {
     me::scene::Entity e = f.scene.CreateEntity();
     f.scene.SetLocalTransform(e, me::Transform2D{{1.0f, 1.0f}, 0.0f, {1.0f, 1.0f}});
     const auto id = f.scene.IdOf(e);
+
+    // dry-run 预览不改变换
+    auto dry = f.reg.Invoke("entity.set_transform",
+                            {{"id", id}, {"position", {{"x", 8.0}, {"y", 9.0}}}},
+                            CallerRole::Automation, f.ctx, /*dryRun=*/true);
+    CHECK(dry.ok);
+    CHECK(f.scene.LocalTransform(e).position.x == doctest::Approx(1.0f));
 
     auto r = f.reg.Invoke("entity.set_transform",
                           {{"id", id}, {"position", {{"x", 8.0}, {"y", 9.0}}}},
