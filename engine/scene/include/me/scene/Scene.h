@@ -15,6 +15,9 @@
 
 namespace me::scene {
 
+/// @brief 持久实体身份:单调递增、永不复用;命令用它锚定实体,跨销毁/重建稳定。0 表示无效。
+using EntityId = std::uint64_t;
+
 /**
  * @brief 混合实体模型的场景容器(纯 CPU,不持有 RHI 资源,可独立单测)。
  *
@@ -38,6 +41,14 @@ public:
 
     /// @brief 收集全部存活实体(顺序为槽位顺序,供 System 遍历)。
     std::vector<Entity> AliveEntities() const;
+
+    /// @brief 取实体的持久身份 id;实体失活返回 0。
+    EntityId IdOf(Entity e) const;
+    /// @brief 把持久身份解析为当前存活句柄;无对应存活实体返回 Entity::Invalid()。
+    Entity Resolve(EntityId id) const;
+    /// @brief 命令恢复路径:以给定 id 重建实体(用于 create 的 redo、destroy 的 undo)。
+    ///        前置:id != 0 且当前不存活;generation 正常推进,id 重新登记。
+    Entity CreateEntityWithId(EntityId id);
 
     // —— 层级与变换 ——
     /// @brief 设置实体局部变换,并把以它为根的子树标记为世界脏。
@@ -108,6 +119,7 @@ private:
     struct Slot {
         std::uint32_t generation = 0;
         bool alive = false;
+        EntityId id = 0;               // 持久身份(0 = 无)
         me::Transform2D local{};
         Entity parent = Entity::Invalid();
         std::vector<Entity> children;
@@ -130,6 +142,8 @@ private:
     std::vector<std::uint32_t> m_freeList; // 可复用槽位 index
     std::size_t m_aliveCount = 0;
     Entity m_activeCamera = Entity::Invalid();
+    EntityId m_nextId = 1;             // 单调 id 分配器(0 保留为无效)
+    std::unordered_map<EntityId, std::uint32_t> m_idToIndex; // 存活 id → 槽位 index
 
     // 类型擦除的组件存储集合(每种组件类型一个 ComponentStorage<T>)。
     std::unordered_map<std::type_index, std::unique_ptr<IComponentStorage>> m_stores;

@@ -18,6 +18,7 @@ add_executable(me_tests
     assets/test_tiled_loader.cpp
     render/test_camera.cpp
     scene/test_entity.cpp
+    scene/test_entity_id.cpp
     scene/test_transform_hierarchy.cpp
     scene/test_component_storage.cpp
     scene/test_render_system.cpp
