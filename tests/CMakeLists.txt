@@ -29,6 +29,7 @@ add_executable(me_tests
     command/test_set_transform_cmd.cpp
     command/test_destroy_entity_cmd.cpp
     toolapi/test_tool_result.cpp
+    toolapi/test_permission.cpp
 )
 
 target_link_libraries(me_tests PRIVATE doctest::doctest me_core me_platform me_rhi_cpu me_assets me_scene me_command me_toolapi)
