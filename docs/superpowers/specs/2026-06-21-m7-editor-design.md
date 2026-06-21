@@ -81,12 +81,16 @@ sandbox/        → 现有 DX12 主循环接入 ImGui 后端 + 面板绘制;
 | `Undo()` / `Redo()` | (直调 CommandStack,见 §5) | 成功后刷新 Hierarchy/Inspector |
 
 ### 3.3 DTO 与 JSON 解析
-DTO 结构集中在 me_editor,面板只读 DTO、不碰 JSON:
-- `EntityRow { EntityId id; std::string label; }`
-- `EntityDetails { EntityId id; Transform2D transform; std::vector<std::string> components; bool hasTransform; }`
-- `LogRow { std::uint64_t invocationId; std::string toolName; std::string status; }`
+DTO 结构集中在 me_editor,面板只读 DTO、不碰 JSON。字段**严格对照 M6 Tool 的实际 JSON 输出**:
 
-JSON → DTO 的解析逻辑全部在 controller(对照 `scene.get_entity` 等 Tool 的实际 JSON 输出形状实现)。解析失败(字段缺失/类型不符)按错误处理:写 `m_lastError`,不崩、不抛(遵守项目不用异常规范)。
+- `EntityRow { me::scene::EntityId id; me::Transform2D localTransform; }`
+  来自 `scene.list_entities` 的 `entities[*]`:`{id, position:{x,y}, rotation, scale:{x,y}}`。**无 label 字段**(见 §5 发现 #2),面板显示 `Entity #<id>`。
+- `EntityDetails { me::scene::EntityId id; me::Transform2D localTransform; me::scene::EntityId parentId; std::vector<me::scene::EntityId> children; }`
+  来自 `scene.get_entity`:`{id, position, rotation, scale, parentId, children}`。**无组件列表**(见 §5 发现 #3),Inspector 本切片只编辑 transform + 显示层级。
+- `LogRow { std::uint64_t invocationId; std::string toolName; bool ok; std::string code; }`
+  来自 `log.read` 的 `invocations[*]`:`{id, tool, params, dryRun, ok, code, message}`,取 `id/tool/ok/code` 四字段。
+
+JSON → DTO 的解析逻辑全部在 controller(对照上述实际 JSON 形状实现)。解析失败(字段缺失/类型不符)按错误处理:写 `m_lastError`,不崩、不抛(遵守项目不用异常规范)。
 
 ### 3.4 错误处理
 每次 `Invoke` 返回的 `ToolResult` 非 ok 时:
@@ -129,9 +133,10 @@ JSON → DTO 的解析逻辑全部在 controller(对照 `scene.get_entity` 等 T
 精简切片**不补 Tool**,但显式记录验证过程暴露的 Tool API 缺口,作为 M7 交付物之一(回写 PROGRESS + ADR):
 
 1. **Undo/Redo 未暴露为 Tool**:M6 的 CommandStack 在 ToolContext 内,但没有 `edit.undo`/`edit.redo` Tool。精简切片内,编辑器作为特权宿主**直接调 `ctx.commands.Undo()/Redo()`**。标注为发现的缺口 → 后续候选 Tool `edit.undo` / `edit.redo`(届时 Agent 也能受控撤销)。
-2. **实体人类可读 label**:若 `scene.list_entities` / `scene.get_entity` 只回 EntityId,Hierarchy 只能显示裸 id。本切片按 Tool 实际返回字段显示(有 label 则用,否则显示 id)。标注为候选缺口 → 后续 `entity.set_name` / get_entity 增 name 字段。
+2. **实体无人类可读 label**:`scene.list_entities` / `scene.get_entity` 只回 EntityId,无 name/label 字段。Hierarchy 只能显示 `Entity #<id>`。标注为候选缺口 → 后续 `entity.set_name` + get/list 增 name 字段。
+3. **`scene.get_entity` 不返回组件列表**:只回 transform + parentId + children,Inspector 无法列出/编辑组件(如 Sprite/Camera/TileMap)。本切片 Inspector 只编辑 transform。标注为候选缺口 → 后续 get_entity 增 `components` 字段 + `entity.add_component`/`entity.remove_component` Tool。
 
-> 这些发现正是"Editor as Client 反向验证接口完备性"的具体兑现,而非实现瑕疵。
+> 这些发现正是"Editor as Client 反向验证接口完备性"的具体兑现,而非实现瑕疵。M6 的 6 Tool 足以驱动一个"实体增删 + 变换编辑 + 层级浏览 + 审计查看"的最小编辑器;组件编辑与命名是下一批 Tool 的明确需求来源。
 
 ## 6. 测试策略
 
