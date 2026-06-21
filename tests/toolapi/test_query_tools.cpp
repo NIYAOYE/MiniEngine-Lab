@@ -33,6 +33,17 @@ TEST_CASE("QueryTools:list_entities 返回全部存活实体") {
     CHECK(r.ok);
     CHECK(r.data["count"] == 2);
     CHECK(r.data["entities"].size() == 2);
+    // 验证 list 路径经 TransformToJson 正确序列化变换字段(e0 槽位序在前)
+    const auto e0Id = scene.IdOf(e0);
+    bool found = false;
+    for (const auto& item : r.data["entities"]) {
+        if (item["id"] == e0Id) {
+            CHECK(item["position"]["x"] == doctest::Approx(2.0f));
+            CHECK(item["position"]["y"] == doctest::Approx(3.0f));
+            found = true;
+        }
+    }
+    CHECK(found);
 }
 
 TEST_CASE("QueryTools:get_entity 命中返回变换,缺失 PreconditionFailed") {
