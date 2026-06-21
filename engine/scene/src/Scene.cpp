@@ -44,6 +44,9 @@ void Scene::DestroyEntity(Entity e) {
     Slot* s = SlotOf(e);
     if (s == nullptr) return; // 失效句柄:安全无操作
 
+    // 若被销毁实体正是活动相机,立即清除,防止 m_activeCamera 残留悬垂句柄。
+    if (m_activeCamera == e) m_activeCamera = Entity::Invalid();
+
     // 先递归销毁子树(复制子列表,避免遍历中被修改)。
     const std::vector<Entity> kids = s->children;
     const std::uint32_t index = e.index;

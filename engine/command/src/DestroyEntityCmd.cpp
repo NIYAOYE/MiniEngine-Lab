@@ -30,9 +30,7 @@ CommandResult DestroyEntityCmd::execute(me::scene::Scene& scene) {
         for (auto it = kids.rbegin(); it != kids.rend(); ++it) stack.push_back(*it);
     }
 
-    // active camera 在子树内时,销毁前先置空,避免场景持有悬垂句柄。
-    if (m_activeCameraId != 0) scene.SetActiveCamera(me::scene::Entity::Invalid());
-    scene.DestroyEntity(root); // 连带销毁整棵子树
+    scene.DestroyEntity(root); // 连带销毁整棵子树(Scene::DestroyEntity 内部已清除悬垂 activeCamera)
     return CommandResult::Ok(describe());
 }
 
