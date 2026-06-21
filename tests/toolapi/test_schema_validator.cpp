@@ -63,3 +63,17 @@ TEST_CASE("Schema:params 非对象报错") {
     auto r = ValidateAgainstSchema(kSchema, json::array({1, 2}));
     CHECK_FALSE(r.ok);
 }
+
+TEST_CASE("Schema:array 类型接受数组,拒绝非数组") {
+    json schema = {{"type", "object"},
+                   {"properties", {{"tags", {{"type", "array"}}}}}};
+    CHECK(ValidateAgainstSchema(schema, json{{"tags", json::array({1, 2})}}).ok);
+    CHECK_FALSE(ValidateAgainstSchema(schema, json{{"tags", "not-array"}}).ok);
+}
+
+TEST_CASE("Schema:boolean 类型接受布尔,拒绝非布尔") {
+    json schema = {{"type", "object"},
+                   {"properties", {{"flag", {{"type", "boolean"}}}}}};
+    CHECK(ValidateAgainstSchema(schema, json{{"flag", true}}).ok);
+    CHECK_FALSE(ValidateAgainstSchema(schema, json{{"flag", 1}}).ok);
+}
