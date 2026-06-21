@@ -70,3 +70,13 @@ TEST_CASE("EditorController:InspectSelected 不存在实体 → LastError,不崩
     CHECK_FALSE(f.ctrl.HasInspected());
     CHECK(f.ctrl.HasError()); // 经 get_entity PreconditionFailed
 }
+
+TEST_CASE("EditorController:CreateEntity 实体+1、选中新实体、Hierarchy 刷新") {
+    Fixture f;
+    f.ctrl.CreateEntity();
+    REQUIRE(f.ctrl.Hierarchy().size() == 1);
+    CHECK(f.ctrl.HasSelection());
+    CHECK(f.ctrl.Selected() == f.ctrl.Hierarchy()[0].id);
+    CHECK(f.ctrl.HasInspected());
+    CHECK_FALSE(f.ctrl.HasError());
+}

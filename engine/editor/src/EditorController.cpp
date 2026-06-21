@@ -71,4 +71,15 @@ void EditorController::InspectSelected() {
     m_hasInspected = true;
 }
 
+void EditorController::CreateEntity() {
+    const me::toolapi::ToolResult r = invoke("scene.create_entity", nlohmann::json::object());
+    if (!r.ok) return;
+    const auto id = r.data.value("id", me::scene::EntityId{0});
+    RefreshHierarchy();
+    if (id != kInvalidEntityId) {
+        m_selected = id;
+        InspectSelected();
+    }
+}
+
 } // namespace me::editor
