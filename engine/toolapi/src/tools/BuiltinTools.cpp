@@ -8,7 +8,7 @@ void RegisterBuiltinTools(ToolRegistry& registry) {
     // 查询型
     registry.Register(MakeListEntitiesTool());
     registry.Register(MakeGetEntityTool());
-    // TODO(Task 7): registry.Register(MakeLogReadTool());
+    registry.Register(MakeLogReadTool());
     // 变更型
     // TODO(Task 7/8): registry.Register(MakeCreateEntityTool());
     // TODO(Task 7/8): registry.Register(MakeDestroyEntityTool());

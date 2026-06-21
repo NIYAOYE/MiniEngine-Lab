@@ -69,9 +69,38 @@ public:
     }
 };
 
+// log.read:读取审计日志(可选 limit 取最近 N 条)。
+class LogReadTool final : public ITool {
+public:
+    std::string name() const override { return "log.read"; }
+    ToolCategory category() const override { return ToolCategory::Query; }
+    Permission permission() const override { return Permission::AgentAllowed; }
+    nlohmann::json paramsSchema() const override {
+        return {{"type", "object"},
+                {"properties", {{"limit", {{"type", "integer"}, {"minimum", 0}}}}}};
+    }
+    ToolResult dryRun(ToolContext& ctx, const nlohmann::json& p) const override {
+        return run(ctx, p);
+    }
+    ToolResult run(ToolContext& ctx, const nlohmann::json& p) const override {
+        const auto& entries = ctx.log.Entries();
+        std::size_t limit = entries.size();
+        if (p.contains("limit")) {
+            const std::size_t want = p["limit"].get<std::size_t>();
+            if (want < limit) limit = want; // 0 或缺省 = 全部;否则取最近 N
+        }
+        nlohmann::json arr = nlohmann::json::array();
+        const std::size_t start = entries.size() - limit;
+        for (std::size_t i = start; i < entries.size(); ++i)
+            arr.push_back(entries[i].toJson());
+        return ToolResult::Success({{"count", arr.size()}, {"invocations", std::move(arr)}});
+    }
+};
+
 } // namespace
 
 std::unique_ptr<ITool> MakeListEntitiesTool() { return std::make_unique<ListEntitiesTool>(); }
 std::unique_ptr<ITool> MakeGetEntityTool() { return std::make_unique<GetEntityTool>(); }
+std::unique_ptr<ITool> MakeLogReadTool() { return std::make_unique<LogReadTool>(); }
 
 } // namespace me::toolapi

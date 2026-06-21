@@ -66,3 +66,26 @@ TEST_CASE("QueryTools:get_entity 命中返回变换,缺失 PreconditionFailed") 
     auto miss = reg.Invoke("scene.get_entity", {{"id", 9999}}, CallerRole::Agent, ctx);
     CHECK(miss.code == ToolErrorCode::PreconditionFailed);
 }
+
+TEST_CASE("QueryTools:log.read 返回已记录调用,limit 截尾") {
+    ToolRegistry reg;
+    reg.Register(MakeListEntitiesTool());
+    reg.Register(MakeLogReadTool());
+
+    me::scene::Scene scene;
+    me::command::CommandStack stack;
+    ToolInvocationLog log;
+    ToolContext ctx{scene, stack, log};
+
+    // 制造若干调用记录
+    reg.Invoke("scene.list_entities", nlohmann::json::object(), CallerRole::Agent, ctx);
+    reg.Invoke("scene.list_entities", nlohmann::json::object(), CallerRole::Agent, ctx);
+
+    auto all = reg.Invoke("log.read", nlohmann::json::object(), CallerRole::Agent, ctx);
+    CHECK(all.ok);
+    // 此前 2 次 list + 本次 log.read 的记录尚未在 run 内可见(record 在 run 之后)
+    CHECK(all.data["count"] == 2);
+
+    auto limited = reg.Invoke("log.read", {{"limit", 1}}, CallerRole::Agent, ctx);
+    CHECK(limited.data["invocations"].size() == 1);
+}
