@@ -94,6 +94,12 @@ public:
         if (auto* store = FindStore<T>()) store->Remove(e);
     }
 
+    /// @brief 收集实体当前全部组件的快照(供命令快照实体完整状态)。
+    std::vector<std::unique_ptr<IComponentSnapshot>> CaptureComponents(Entity e);
+    /// @brief 把一组组件快照还原到实体 e。
+    void RestoreComponents(
+        Entity e, const std::vector<std::unique_ptr<IComponentSnapshot>>& snaps);
+
     // —— 活动相机 ——
     /// @brief 指定活动相机实体(RenderSystem::ResolveActiveCamera 优先使用)。
     void SetActiveCamera(Entity e) { m_activeCamera = e; }

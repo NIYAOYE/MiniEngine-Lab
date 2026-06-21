@@ -131,6 +131,19 @@ void Scene::RemoveAllComponents(Entity e) {
     for (auto& kv : m_stores) kv.second->Remove(e);
 }
 
+std::vector<std::unique_ptr<IComponentSnapshot>> Scene::CaptureComponents(Entity e) {
+    std::vector<std::unique_ptr<IComponentSnapshot>> out;
+    for (auto& kv : m_stores) {
+        if (auto snap = kv.second->Capture(e)) out.push_back(std::move(snap));
+    }
+    return out;
+}
+
+void Scene::RestoreComponents(
+    Entity e, const std::vector<std::unique_ptr<IComponentSnapshot>>& snaps) {
+    for (const auto& snap : snaps) snap->RestoreTo(e);
+}
+
 void Scene::SetLocalTransform(Entity e, const me::Transform2D& t) {
     Slot* s = SlotOf(e);
     ME_ASSERT_MSG(s != nullptr, "SetLocalTransform: 实体已失效");
