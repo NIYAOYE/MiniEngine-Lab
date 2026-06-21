@@ -28,9 +28,13 @@ public:
     /// @brief 重做最近撤销的命令;redo 栈空返回失败。
     CommandResult redo(me::scene::Scene& scene);
 
+    /// @brief 是否有可撤销的命令。
     bool canUndo() const { return !m_undo.empty(); }
+    /// @brief 是否有可重做的命令。
     bool canRedo() const { return !m_redo.empty(); }
+    /// @brief 撤销栈深度。
     std::size_t undoDepth() const { return m_undo.size(); }
+    /// @brief 重做栈深度。
     std::size_t redoDepth() const { return m_redo.size(); }
     /// @brief 清空两栈(丢弃全部历史)。
     void clear();
