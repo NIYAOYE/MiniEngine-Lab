@@ -39,4 +39,5 @@ TEST_CASE("InvocationLog:ToolInvocation::toJson 携带核心字段") {
     CHECK(j["dryRun"] == true);
     CHECK(j["ok"] == false);
     CHECK(j["code"] == "PreconditionFailed");
+    CHECK(j["message"] == "no such entity");
 }
