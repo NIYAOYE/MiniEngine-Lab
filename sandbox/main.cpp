@@ -233,8 +233,8 @@ int main() {
             ImGui::Separator();
             for (const auto& row : editor.Hierarchy()) {
                 char label[32];
-                std::snprintf(label, sizeof(label), "Entity #%u",
-                              static_cast<unsigned>(row.id));
+                std::snprintf(label, sizeof(label), "Entity #%llu",
+                              static_cast<unsigned long long>(row.id)); // EntityId=uint64
                 if (ImGui::Selectable(label, editor.Selected() == row.id)) {
                     editor.Select(row.id);
                     editor.InspectSelected();
