@@ -44,6 +44,16 @@ TEST_CASE("TimeConfig:非法配置一律 nullopt") {
         j.erase("minutesPerDay");
         CHECK_FALSE(LoadTimeConfig(j).has_value());
     }
+    SUBCASE("缺 realSecondsPerStep(非 ReadInt 路径)") {
+        auto j = ValidJson();
+        j.erase("realSecondsPerStep");
+        CHECK_FALSE(LoadTimeConfig(j).has_value());
+    }
+    SUBCASE("缺 seasonNames(非 ReadInt 路径)") {
+        auto j = ValidJson();
+        j.erase("seasonNames");
+        CHECK_FALSE(LoadTimeConfig(j).has_value());
+    }
     SUBCASE("数值非正") {
         auto j = ValidJson();
         j["daysPerSeason"] = 0;
