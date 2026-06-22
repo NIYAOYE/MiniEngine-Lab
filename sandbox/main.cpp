@@ -6,7 +6,6 @@
 #include "me/platform/Input.h"
 #include "me/assets/ImageData.h"
 #include "me/assets/TiledMapLoader.h"
-#include "me/assets/TileLayout.h"
 #include "me/core/Log.h"
 #include "me/core/Matrix4x4.h"
 #include "me/core/Vector2.h"
@@ -60,7 +59,10 @@ constexpr float kCameraSpeed = 6.0f;     // 每帧 player 平移步长(像素)
 constexpr float kZoomStep = 0.02f;       // 每帧缩放步长
 constexpr float kMinZoom = 0.25f;
 constexpr float kMaxZoom = 4.0f;
-constexpr float kSpriteSize = 16.0f;     // prop/player 精灵世界像素尺寸
+constexpr float kPropSize = 32.0f;       // 物件精灵世界像素尺寸(与 32px 瓦片协调)
+constexpr float kTreeSize = 48.0f;       // 树更大些
+constexpr float kPlayerSize = 32.0f;     // player 精灵世界像素尺寸
+constexpr int kSrvHeapCapacity = 16;     // tileset + 8 精灵纹理 + ImGui 字体 + 余量
 
 void Transition(ID3D12GraphicsCommandList* cmd, ID3D12Resource* res,
                 D3D12_RESOURCE_STATES from, D3D12_RESOURCE_STATES to) {
@@ -95,7 +97,7 @@ int main() {
     platform::WindowDesc wd;
     wd.width = kWindowWidth;
     wd.height = kWindowHeight;
-    wd.title = "MiniEngine M4 \xe2\x80\x94 Scene"; // UTF-8: "MiniEngine M4 — Scene"
+    wd.title = "MiniEngine \xe2\x80\x94 Farm demo (M8.1 assets)"; // UTF-8 em-dash
     auto window = platform::Window::Create(wd);
     if (!window) { ME_LOG_ERROR("窗口创建失败"); return 1; }
 
@@ -111,7 +113,7 @@ int main() {
     auto ctx = rhi::CommandContext::Create(device->Device());
     auto fence = rhi::Fence::Create(device->Device());
     auto srvHeap = rhi::DescriptorHeap::Create(
-        device->Device(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 8, true);
+        device->Device(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, kSrvHeapCapacity, true);
     if (!swapChain || !ctx || !fence || !srvHeap) {
         ME_LOG_ERROR("RHI 初始化失败"); return 1;
     }
@@ -120,7 +122,7 @@ int main() {
     if (!batch) { ME_LOG_ERROR("批渲染器创建失败"); return 1; }
 
     // 数据驱动:从 Tiled JSON 加载地图 + 其 tileset 贴图。
-    auto mapData = assets::LoadTiledMap(std::string(ME_ASSET_DIR) + "/maps/demo.tmj");
+    auto mapData = assets::LoadTiledMap(std::string(ME_ASSET_DIR) + "/maps/farm_demo.tmj");
     if (!mapData) { ME_LOG_ERROR("加载地图失败"); return 1; }
     auto tileImage = assets::LoadImageRGBA8(mapData->tileset.imagePath);
     if (!tileImage) { ME_LOG_ERROR("加载 tileset 贴图失败"); return 1; }
@@ -150,32 +152,54 @@ int main() {
         scene.AddComponent<sc::TileMapComponent>(ground, tm);
     }
 
-    // srcRect 辅助:从 tileset 局部 id 取 UV。
-    auto spriteSrc = [&](int localId) {
-        return me::assets::SrcRectForLocalId(mapData->tileset, localId);
+    // —— 物件/角色精灵:各自独立纹理(AI 资产,白底已抠透明)——
+    // 每张图一个 textureId;ownedTextures 维持纹理对象生命周期至程序结束。
+    std::vector<std::unique_ptr<rhi::GpuTexture>> ownedTextures;
+    auto loadSpriteTexture = [&](const char* relPath) -> std::uint32_t {
+        auto img = assets::LoadImageRGBA8(std::string(ME_ASSET_DIR) + relPath);
+        if (!img) { ME_LOG_ERROR("加载精灵贴图失败"); return kTilesetTextureId; }
+        auto srv = srvHeap->Allocate();
+        auto tex = rhi::GpuTexture::Create(
+            device->Device(), device->Queue(), *fence,
+            uint32_t(img->width), uint32_t(img->height), img->pixels.data(), srv);
+        if (!tex) { ME_LOG_ERROR("创建精灵纹理失败"); return kTilesetTextureId; }
+        const std::uint32_t id = static_cast<std::uint32_t>(textureTable.size());
+        textureTable.push_back(tex.get());
+        ownedTextures.push_back(std::move(tex));
+        return id;
     };
+    const std::uint32_t texTree     = loadSpriteTexture("/textures/prop_small_leafy_farm_tree.png");
+    const std::uint32_t texRock     = loadSpriteTexture("/textures/prop_gray_boulder_rock.png");
+    const std::uint32_t texFence    = loadSpriteTexture("/textures/prop_wooden_fence_segment.png");
+    const std::uint32_t texWatering = loadSpriteTexture("/textures/prop_watering_can.png");
+    const std::uint32_t texCrate    = loadSpriteTexture("/textures/prop_wooden_crate.png");
+    const std::uint32_t texSign     = loadSpriteTexture("/textures/prop_sign_post.png");
+    const std::uint32_t texBush     = loadSpriteTexture("/textures/prop_bush_with_berries.png");
+    const std::uint32_t texPlayer   = loadSpriteTexture("/textures/player_sprite.png");
 
-    // 添加 prop 实体:Sprite 挂在 tileset 图集上,取不同 localId 作为不同物体。
-    // localId 范围:4 列 × 3 行 = 0..11。
-    auto addProp = [&](float x, float y, int localId, int layer) -> sc::Entity {
+    // 精灵实体放置:整张纹理(srcRect 默认 {0,0,1,1}),世界尺寸按 32px 瓦片协调。
+    auto addSprite = [&](float x, float y, std::uint32_t texId, float size, int layer) -> sc::Entity {
         const sc::Entity e = scene.CreateEntity();
         me::Transform2D t;
         t.position = me::Vector2{x, y};
         scene.SetLocalTransform(e, t);
         sc::SpriteComponent sp;
-        sp.textureId = kTilesetTextureId;
-        sp.srcRect = spriteSrc(localId);
-        sp.size = me::Vector2{kSpriteSize, kSpriteSize};
+        sp.textureId = texId;
+        sp.size = me::Vector2{size, size};
         sp.sortLayer = layer;
         scene.AddComponent<sc::SpriteComponent>(e, sp);
         return e;
     };
 
-    // 同层不同 Y 的两个道具,演示 2.5D Y 排序叠压。
-    addProp(80.0f, 96.0f, /*localId*/6, /*layer*/1);
-    addProp(96.0f, 64.0f, /*localId*/9, /*layer*/1);
-    // player 实体:WASD 控制其局部变换;相机为其子节点自动跟随。
-    const sc::Entity player = addProp(96.0f, 80.0f, /*localId*/4, /*layer*/1);
+    // 地图 12×8 @32px → 世界 384×256;摆几个物件 + 居中 player(WASD 控制,相机跟随)。
+    addSprite(96.0f, 160.0f, texTree, kTreeSize, /*layer*/1);
+    addSprite(288.0f, 96.0f, texRock, kPropSize, /*layer*/1);
+    addSprite(224.0f, 168.0f, texFence, kPropSize, /*layer*/1);
+    addSprite(128.0f, 96.0f, texCrate, kPropSize, /*layer*/1);
+    addSprite(300.0f, 192.0f, texBush, kPropSize, /*layer*/1);
+    addSprite(150.0f, 110.0f, texWatering, kPropSize, /*layer*/1);
+    addSprite(256.0f, 200.0f, texSign, kPropSize, /*layer*/1);
+    const sc::Entity player = addSprite(192.0f, 128.0f, texPlayer, kPlayerSize, /*layer*/2);
 
     // 相机实体:挂 CameraComponent,作为 player 的子节点(跟随)。
     const sc::Entity cameraEntity = scene.CreateEntity();
@@ -308,6 +332,13 @@ int main() {
         me::Transform2D pt = scene.LocalTransform(player);
         pt.position.x += moveDelta.x;
         pt.position.y += moveDelta.y;
+        // 边界限制:把 player 中心夹在地图世界范围内,按半个精灵尺寸内缩,使其完整留在图内。
+        // 世界 = 左下原点 Y 向上,范围 [0, mapCols*tileW] x [0, mapRows*tileH](见 TileGeometry)。
+        const float kMapWorldW = float(mapData->mapCols * mapData->tileWidth);
+        const float kMapWorldH = float(mapData->mapRows * mapData->tileHeight);
+        const float kPlayerHalf = kPlayerSize * 0.5f;
+        pt.position.x = Clamp(pt.position.x, kPlayerHalf, kMapWorldW - kPlayerHalf);
+        pt.position.y = Clamp(pt.position.y, kPlayerHalf, kMapWorldH - kPlayerHalf);
         scene.SetLocalTransform(player, pt);
 
         // Q/E 调整缩放,写入 CameraComponent。

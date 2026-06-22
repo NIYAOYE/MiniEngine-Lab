@@ -1,10 +1,17 @@
 CLAUDE.md
 AGENTS.md
 docs/SECURITY_REVIEW_SUGGESTIONS.md
+largeImage
 
 .vscode
+.codex
+.agents
+.claude
+
 /build/
 /build-win/
 /build-wsl/
 # 本地 Windows 构建辅助脚本(含机器特定路径,不入库)
 _winbuild.bat
+# Dear ImGui 运行时窗口布局缓存(每次运行重生成,不入库)
+imgui.ini
