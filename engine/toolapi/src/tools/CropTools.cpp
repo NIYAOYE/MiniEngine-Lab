@@ -134,10 +134,91 @@ private:
     }
 };
 
+// crop.advance_days:推进 N 天(运行时态,不经 CommandStack)。
+class CropAdvanceDaysTool final : public ITool {
+public:
+    std::string name() const override { return "crop.advance_days"; }
+    ToolCategory category() const override { return ToolCategory::Mutation; }
+    Permission permission() const override { return Permission::Automation; }
+    nlohmann::json paramsSchema() const override {
+        return {{"type", "object"},
+                {"required", {"days"}},
+                {"properties", {{"days", {{"type", "integer"}, {"minimum", 1}}}}}};
+    }
+    ToolResult dryRun(ToolContext& ctx, const nlohmann::json& p) const override {
+        if (ctx.farm == nullptr)
+            return ToolResult::Error(ToolErrorCode::PreconditionFailed,
+                                     "no farm field wired into ToolContext");
+        me::domain::FarmField preview = *ctx.farm; // 值拷贝:零副作用
+        return apply(preview, p);
+    }
+    ToolResult run(ToolContext& ctx, const nlohmann::json& p) const override {
+        if (ctx.farm == nullptr)
+            return ToolResult::Error(ToolErrorCode::PreconditionFailed,
+                                     "no farm field wired into ToolContext");
+        return apply(*ctx.farm, p);
+    }
+private:
+    static ToolResult apply(me::domain::FarmField& farm, const nlohmann::json& p) {
+        const int days = p["days"].get<int>();
+        farm.AdvanceDays(days);
+        nlohmann::json out = FieldToJson(farm);
+        out["advanced"] = days;
+        return ToolResult::Success(out);
+    }
+};
+
+// crop.harvest:收获成熟作物(EditorOnly:销毁性产出,清空瓦片)。运行时态,不经 CommandStack。
+class CropHarvestTool final : public ITool {
+public:
+    std::string name() const override { return "crop.harvest"; }
+    ToolCategory category() const override { return ToolCategory::Mutation; }
+    Permission permission() const override { return Permission::EditorOnly; }
+    nlohmann::json paramsSchema() const override {
+        return {{"type", "object"},
+                {"required", {"tileX", "tileY"}},
+                {"properties",
+                 {{"tileX", {{"type", "integer"}}},
+                  {"tileY", {{"type", "integer"}}}}}};
+    }
+    ToolResult dryRun(ToolContext& ctx, const nlohmann::json& p) const override {
+        if (ctx.farm == nullptr)
+            return ToolResult::Error(ToolErrorCode::PreconditionFailed,
+                                     "no farm field wired into ToolContext");
+        me::domain::FarmField preview = *ctx.farm;
+        return apply(preview, p);
+    }
+    ToolResult run(ToolContext& ctx, const nlohmann::json& p) const override {
+        if (ctx.farm == nullptr)
+            return ToolResult::Error(ToolErrorCode::PreconditionFailed,
+                                     "no farm field wired into ToolContext");
+        return apply(*ctx.farm, p);
+    }
+private:
+    static ToolResult apply(me::domain::FarmField& farm, const nlohmann::json& p) {
+        const int x = p["tileX"].get<int>();
+        const int y = p["tileY"].get<int>();
+        const me::domain::HarvestResult h = farm.Harvest(x, y);
+        switch (h.status) {
+            case me::domain::HarvestStatus::EmptyTile:
+                return ToolResult::Error(ToolErrorCode::PreconditionFailed,
+                                         "no crop on tile to harvest");
+            case me::domain::HarvestStatus::NotMature:
+                return ToolResult::Error(ToolErrorCode::PreconditionFailed,
+                                         "crop not mature");
+            case me::domain::HarvestStatus::Ok:
+                break;
+        }
+        return ToolResult::Success({{"itemId", h.itemId}, {"count", h.count}});
+    }
+};
+
 } // namespace
 
 std::unique_ptr<ITool> MakeCropGetFieldTool() { return std::make_unique<CropGetFieldTool>(); }
 std::unique_ptr<ITool> MakeCropPlantTool() { return std::make_unique<CropPlantTool>(); }
 std::unique_ptr<ITool> MakeCropWaterTool() { return std::make_unique<CropWaterTool>(); }
+std::unique_ptr<ITool> MakeCropAdvanceDaysTool() { return std::make_unique<CropAdvanceDaysTool>(); }
+std::unique_ptr<ITool> MakeCropHarvestTool() { return std::make_unique<CropHarvestTool>(); }
 
 } // namespace me::toolapi

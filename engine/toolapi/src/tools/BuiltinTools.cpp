@@ -20,6 +20,8 @@ void RegisterBuiltinTools(ToolRegistry& registry) {
     registry.Register(MakeCropGetFieldTool());
     registry.Register(MakeCropPlantTool());
     registry.Register(MakeCropWaterTool());
+    registry.Register(MakeCropAdvanceDaysTool());
+    registry.Register(MakeCropHarvestTool());
 }
 
 } // namespace me::toolapi

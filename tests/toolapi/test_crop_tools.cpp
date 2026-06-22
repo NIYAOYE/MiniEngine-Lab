@@ -154,3 +154,120 @@ TEST_CASE("CropTools:crop.plant schema 拒绝缺字段") {
     CHECK_FALSE(r.ok);
     CHECK(r.code == ToolErrorCode::InvalidParams);
 }
+
+TEST_CASE("CropTools:crop.advance_days 推进并回报 advanced") {
+    ToolRegistry reg;
+    reg.Register(MakeCropPlantTool());
+    reg.Register(MakeCropWaterTool());
+    reg.Register(MakeCropAdvanceDaysTool());
+    me::scene::Scene scene;
+    me::command::CommandStack stack;
+    ToolInvocationLog log;
+    auto farm = MakeFarm();
+    ToolContext ctx{scene, stack, log, nullptr, &farm};
+
+    REQUIRE(reg.Invoke("crop.plant", {{"tileX", 0}, {"tileY", 0}, {"cropId", "parsnip"}},
+                       CallerRole::Automation, ctx).ok);
+    REQUIRE(reg.Invoke("crop.water", {{"tileX", 0}, {"tileY", 0}},
+                       CallerRole::Automation, ctx).ok);
+    auto r = reg.Invoke("crop.advance_days", {{"days", 1}}, CallerRole::Automation, ctx);
+    REQUIRE(r.ok);
+    CHECK(r.data["advanced"] == 1);
+    CHECK(r.data["crops"][0]["stage"] == 1);
+    CHECK(farm.At(0, 0)->stage == 1); // 真实状态推进
+}
+
+TEST_CASE("CropTools:crop.advance_days dry-run 零副作用") {
+    ToolRegistry reg;
+    reg.Register(MakeCropPlantTool());
+    reg.Register(MakeCropWaterTool());
+    reg.Register(MakeCropAdvanceDaysTool());
+    me::scene::Scene scene;
+    me::command::CommandStack stack;
+    ToolInvocationLog log;
+    auto farm = MakeFarm();
+    ToolContext ctx{scene, stack, log, nullptr, &farm};
+
+    REQUIRE(reg.Invoke("crop.plant", {{"tileX", 0}, {"tileY", 0}, {"cropId", "parsnip"}},
+                       CallerRole::Automation, ctx).ok);
+    REQUIRE(reg.Invoke("crop.water", {{"tileX", 0}, {"tileY", 0}},
+                       CallerRole::Automation, ctx).ok);
+    auto r = reg.Invoke("crop.advance_days", {{"days", 1}}, CallerRole::Automation, ctx,
+                        /*dryRun=*/true);
+    REQUIRE(r.ok);
+    CHECK(r.data["crops"][0]["stage"] == 1); // 预览前进
+    CHECK(farm.At(0, 0)->stage == 0);         // 真身未变
+}
+
+TEST_CASE("CropTools:crop.advance_days schema 拒绝 days<1") {
+    ToolRegistry reg;
+    reg.Register(MakeCropAdvanceDaysTool());
+    me::scene::Scene scene;
+    me::command::CommandStack stack;
+    ToolInvocationLog log;
+    auto farm = MakeFarm();
+    ToolContext ctx{scene, stack, log, nullptr, &farm};
+
+    auto r = reg.Invoke("crop.advance_days", {{"days", 0}}, CallerRole::Automation, ctx);
+    CHECK_FALSE(r.ok);
+    CHECK(r.code == ToolErrorCode::InvalidParams);
+}
+
+TEST_CASE("CropTools:crop.harvest 成熟收获产出") {
+    ToolRegistry reg;
+    reg.Register(MakeCropPlantTool());
+    reg.Register(MakeCropWaterTool());
+    reg.Register(MakeCropAdvanceDaysTool());
+    reg.Register(MakeCropHarvestTool());
+    me::scene::Scene scene;
+    me::command::CommandStack stack;
+    ToolInvocationLog log;
+    auto farm = MakeFarm();
+    ToolContext ctx{scene, stack, log, nullptr, &farm};
+
+    REQUIRE(reg.Invoke("crop.plant", {{"tileX", 0}, {"tileY", 0}, {"cropId", "parsnip"}},
+                       CallerRole::Automation, ctx).ok);
+    for (int day = 0; day < 3; ++day) { // 推到成熟(stage 3)
+        REQUIRE(reg.Invoke("crop.water", {{"tileX", 0}, {"tileY", 0}},
+                           CallerRole::Automation, ctx).ok);
+        REQUIRE(reg.Invoke("crop.advance_days", {{"days", 1}},
+                           CallerRole::Automation, ctx).ok);
+    }
+    auto r = reg.Invoke("crop.harvest", {{"tileX", 0}, {"tileY", 0}}, CallerRole::Editor, ctx);
+    REQUIRE(r.ok);
+    CHECK(r.data["itemId"] == "parsnip");
+    CHECK(r.data["count"] == 1);
+    CHECK(farm.At(0, 0) == nullptr); // 瓦片已清空
+}
+
+TEST_CASE("CropTools:crop.harvest 未成熟 PreconditionFailed") {
+    ToolRegistry reg;
+    reg.Register(MakeCropPlantTool());
+    reg.Register(MakeCropHarvestTool());
+    me::scene::Scene scene;
+    me::command::CommandStack stack;
+    ToolInvocationLog log;
+    auto farm = MakeFarm();
+    ToolContext ctx{scene, stack, log, nullptr, &farm};
+
+    REQUIRE(reg.Invoke("crop.plant", {{"tileX", 0}, {"tileY", 0}, {"cropId", "parsnip"}},
+                       CallerRole::Automation, ctx).ok);
+    auto r = reg.Invoke("crop.harvest", {{"tileX", 0}, {"tileY", 0}}, CallerRole::Editor, ctx);
+    CHECK_FALSE(r.ok);
+    CHECK(r.code == ToolErrorCode::PreconditionFailed);
+}
+
+TEST_CASE("CropTools:crop.harvest 权限——Agent/Automation 被拒") {
+    ToolRegistry reg;
+    reg.Register(MakeCropHarvestTool());
+    me::scene::Scene scene;
+    me::command::CommandStack stack;
+    ToolInvocationLog log;
+    auto farm = MakeFarm();
+    ToolContext ctx{scene, stack, log, nullptr, &farm};
+
+    auto a = reg.Invoke("crop.harvest", {{"tileX", 0}, {"tileY", 0}}, CallerRole::Agent, ctx);
+    CHECK(a.code == ToolErrorCode::PermissionDenied);
+    auto m = reg.Invoke("crop.harvest", {{"tileX", 0}, {"tileY", 0}}, CallerRole::Automation, ctx);
+    CHECK(m.code == ToolErrorCode::PermissionDenied); // EditorOnly
+}
