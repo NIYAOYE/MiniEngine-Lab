@@ -1,5 +1,6 @@
 add_library(me_domain STATIC
     src/TimeConfig.cpp
+    src/TimeSystem.cpp
 )
 target_include_directories(me_domain PUBLIC include)
 target_compile_features(me_domain PUBLIC cxx_std_17)
