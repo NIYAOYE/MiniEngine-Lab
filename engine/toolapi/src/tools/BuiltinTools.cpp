@@ -15,6 +15,7 @@ void RegisterBuiltinTools(ToolRegistry& registry) {
     registry.Register(MakeSetTransformTool());
     // 时间型(M8.1)
     registry.Register(MakeTimeGetTool());
+    registry.Register(MakeTimeAdvanceTool());
 }
 
 } // namespace me::toolapi

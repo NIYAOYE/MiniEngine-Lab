@@ -8,10 +8,10 @@
 
 using namespace me::toolapi;
 
-TEST_CASE("Integration:RegisterBuiltinTools 注册全部 7 个 Tool") {
+TEST_CASE("Integration:RegisterBuiltinTools 注册全部 8 个 Tool") {
     ToolRegistry reg;
     RegisterBuiltinTools(reg);
-    CHECK(reg.Size() == 7);
+    CHECK(reg.Size() == 8);
     auto names = reg.ListNames();
     // 字典序前两个不变(time.* 排在 scene.* 之后)
     CHECK(names[0] == "entity.set_transform");

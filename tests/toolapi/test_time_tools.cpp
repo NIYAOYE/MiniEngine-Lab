@@ -56,3 +56,87 @@ TEST_CASE("TimeTools:time.get 无时间系统 PreconditionFailed") {
     CHECK_FALSE(r.ok);
     CHECK(r.code == ToolErrorCode::PreconditionFailed);
 }
+
+TEST_CASE("TimeTools:time.advance 推进改变当前时间") {
+    ToolRegistry reg;
+    reg.Register(MakeTimeAdvanceTool());
+    me::scene::Scene scene;
+    me::command::CommandStack stack;
+    ToolInvocationLog log;
+    me::domain::TimeSystem ts(SmallConfig()); // 一天 100 分钟
+    ToolContext ctx{scene, stack, log, &ts};
+
+    auto r = reg.Invoke("time.advance", {{"minutes", 120}}, CallerRole::Automation, ctx);
+    REQUIRE(r.ok);
+    CHECK(r.data["step"]["minutesAdvanced"] == 120);
+    CHECK(r.data["step"]["daysCrossed"] == 1);
+    CHECK(r.data["time"]["dayOfSeason"] == 2);
+    CHECK(r.data["time"]["minuteOfDay"] == 20);
+    CHECK(ts.Now().minuteOfDay == 20); // 真实状态已推进
+}
+
+TEST_CASE("TimeTools:time.advance dry-run 零副作用") {
+    ToolRegistry reg;
+    reg.Register(MakeTimeAdvanceTool());
+    me::scene::Scene scene;
+    me::command::CommandStack stack;
+    ToolInvocationLog log;
+    me::domain::TimeSystem ts(SmallConfig());
+    ToolContext ctx{scene, stack, log, &ts};
+
+    auto r = reg.Invoke("time.advance", {{"minutes", 120}}, CallerRole::Automation, ctx,
+                        /*dryRun=*/true);
+    REQUIRE(r.ok);
+    CHECK(r.data["step"]["daysCrossed"] == 1);     // 预览给出将会发生什么
+    CHECK(ts.Now().minuteOfDay == 0);               // 真实状态未变
+    CHECK(ts.Now().dayOfSeason == 1);
+}
+
+TEST_CASE("TimeTools:time.advance schema 拒绝") {
+    ToolRegistry reg;
+    reg.Register(MakeTimeAdvanceTool());
+    me::scene::Scene scene;
+    me::command::CommandStack stack;
+    ToolInvocationLog log;
+    me::domain::TimeSystem ts(SmallConfig());
+    ToolContext ctx{scene, stack, log, &ts};
+
+    SUBCASE("缺 minutes") {
+        auto r = reg.Invoke("time.advance", nlohmann::json::object(),
+                            CallerRole::Automation, ctx);
+        CHECK_FALSE(r.ok);
+        CHECK(r.code == ToolErrorCode::InvalidParams);
+    }
+    SUBCASE("minutes < 1") {
+        auto r = reg.Invoke("time.advance", {{"minutes", 0}}, CallerRole::Automation, ctx);
+        CHECK_FALSE(r.ok);
+        CHECK(r.code == ToolErrorCode::InvalidParams);
+    }
+}
+
+TEST_CASE("TimeTools:time.advance 无时间系统 PreconditionFailed") {
+    ToolRegistry reg;
+    reg.Register(MakeTimeAdvanceTool());
+    me::scene::Scene scene;
+    me::command::CommandStack stack;
+    ToolInvocationLog log;
+    ToolContext ctx{scene, stack, log}; // time = nullptr
+
+    auto r = reg.Invoke("time.advance", {{"minutes", 10}}, CallerRole::Automation, ctx);
+    CHECK_FALSE(r.ok);
+    CHECK(r.code == ToolErrorCode::PreconditionFailed);
+}
+
+TEST_CASE("TimeTools:time.advance 权限——Agent 被拒") {
+    ToolRegistry reg;
+    reg.Register(MakeTimeAdvanceTool());
+    me::scene::Scene scene;
+    me::command::CommandStack stack;
+    ToolInvocationLog log;
+    me::domain::TimeSystem ts(SmallConfig());
+    ToolContext ctx{scene, stack, log, &ts};
+
+    auto r = reg.Invoke("time.advance", {{"minutes", 10}}, CallerRole::Agent, ctx);
+    CHECK_FALSE(r.ok);
+    CHECK(r.code == ToolErrorCode::PermissionDenied); // Automation 权限,Agent 不足
+}
