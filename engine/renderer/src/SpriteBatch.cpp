@@ -157,7 +157,16 @@ std::unique_ptr<SpriteBatch> SpriteBatch::Create(GpuDevice& device) {
     pso.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
     pso.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
     pso.RasterizerState.DepthClipEnable = TRUE;
+    // 标准 src-over alpha 混合:精灵透明区(alpha=0)让背景透出;不透明精灵/瓦片
+    // (alpha=1)等同直接覆盖,故对既有不透明内容无视觉变化。农场精灵需要透明背景。
     for (auto& rt : pso.BlendState.RenderTarget) {
+        rt.BlendEnable = TRUE;
+        rt.SrcBlend = D3D12_BLEND_SRC_ALPHA;
+        rt.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+        rt.BlendOp = D3D12_BLEND_OP_ADD;
+        rt.SrcBlendAlpha = D3D12_BLEND_ONE;
+        rt.DestBlendAlpha = D3D12_BLEND_INV_SRC_ALPHA;
+        rt.BlendOpAlpha = D3D12_BLEND_OP_ADD;
         rt.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
     }
     pso.DepthStencilState.DepthEnable = FALSE;
