@@ -39,6 +39,20 @@ void FarmField::AdvanceDays(int n) {
     for (int i = 0; i < n; ++i) AdvanceOneDay();
 }
 
+HarvestResult FarmField::Harvest(int x, int y) {
+    auto it = crops_.find(TileKey{x, y});
+    if (it == crops_.end()) return HarvestResult{HarvestStatus::EmptyTile, {}, 0};
+
+    const CropConfig* cfg = db_.Find(it->second.cropId);
+    // cfg 理论恒存在(种植时已校验);防御性判空。
+    if (cfg == nullptr || !cfg->IsMatureStage(it->second.stage))
+        return HarvestResult{HarvestStatus::NotMature, {}, 0};
+
+    HarvestResult out{HarvestStatus::Ok, cfg->harvestItemId, cfg->yield};
+    crops_.erase(it); // 清空瓦片
+    return out;
+}
+
 const CropInstance* FarmField::At(int x, int y) const {
     auto it = crops_.find(TileKey{x, y});
     return it == crops_.end() ? nullptr : &it->second;

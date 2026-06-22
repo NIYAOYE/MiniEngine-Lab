@@ -33,6 +33,20 @@ enum class PlantStatus {
     UnknownCrop,   ///< cropId 不在数据库
 };
 
+/// @brief Harvest 结果状态。
+enum class HarvestStatus {
+    Ok,        ///< 收获成功
+    EmptyTile, ///< 该瓦片无作物
+    NotMature, ///< 作物未到成熟阶段
+};
+
+/// @brief Harvest 产出(status==Ok 时 itemId/count 有效)。
+struct HarvestResult {
+    HarvestStatus status = HarvestStatus::EmptyTile;
+    std::string itemId;
+    int count = 0;
+};
+
 /**
  * @brief 农田:以瓦片坐标为键的作物实例网格 + 浇水驱动生长状态机。
  *
@@ -53,6 +67,9 @@ public:
     /// @brief 推进 n 天(n≥1);仅"已浇水"的当天计入生长,未浇水停滞。
     ///        每天对每株:已浇水→daysInStage++、清浇水标记,满阶段天数且未成熟则进阶。
     void AdvanceDays(int n);
+
+    /// @brief 收获成熟作物:返回产出并清空该瓦片;未成熟/空瓦片返回对应状态。
+    HarvestResult Harvest(int x, int y);
 
     /// @brief 查瓦片作物;空返回 nullptr。
     const CropInstance* At(int x, int y) const;

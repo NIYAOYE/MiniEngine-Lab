@@ -128,3 +128,52 @@ TEST_CASE("FarmField:成熟后继续浇水推进不再前进") {
     field.AdvanceDays(5);
     CHECK(field.At(0, 0)->stage == 3); // 仍停在成熟
 }
+
+namespace {
+// 把瓦片上的作物推到成熟阶段(parsnip:3 次浇水+推进)。
+void GrowParsnipToMature(FarmField& field, int x, int y) {
+    REQUIRE(field.Plant(x, y, "parsnip") == PlantStatus::Ok);
+    for (int day = 0; day < 3; ++day) {
+        REQUIRE(field.Water(x, y));
+        field.AdvanceDays(1);
+    }
+    REQUIRE(field.At(x, y)->stage == 3);
+}
+} // namespace
+
+TEST_CASE("FarmField:成熟作物收获产出并清空瓦片") {
+    FarmField field(MakeDb());
+    GrowParsnipToMature(field, 4, 4);
+    auto r = field.Harvest(4, 4);
+    CHECK(r.status == HarvestStatus::Ok);
+    CHECK(r.itemId == "parsnip");
+    CHECK(r.count == 1);
+    CHECK(field.At(4, 4) == nullptr); // 瓦片已清空
+}
+
+TEST_CASE("FarmField:产量取自配置(cauliflower yield=3)") {
+    FarmField field(MakeDb());
+    REQUIRE(field.Plant(0, 0, "cauliflower") == PlantStatus::Ok); // 5 阶段各 2 天
+    for (int i = 0; i < 8; ++i) { // 4 次进阶 ×2 天 = 8 浇水日到 stage 4(成熟)
+        REQUIRE(field.Water(0, 0));
+        field.AdvanceDays(1);
+    }
+    REQUIRE(field.At(0, 0)->stage == 4);
+    auto r = field.Harvest(0, 0);
+    CHECK(r.status == HarvestStatus::Ok);
+    CHECK(r.count == 3);
+}
+
+TEST_CASE("FarmField:未成熟收获失败且不清空") {
+    FarmField field(MakeDb());
+    REQUIRE(field.Plant(4, 4, "parsnip") == PlantStatus::Ok);
+    auto r = field.Harvest(4, 4);
+    CHECK(r.status == HarvestStatus::NotMature);
+    CHECK(field.At(4, 4) != nullptr); // 仍在
+}
+
+TEST_CASE("FarmField:空瓦片收获返回 EmptyTile") {
+    FarmField field(MakeDb());
+    auto r = field.Harvest(7, 7);
+    CHECK(r.status == HarvestStatus::EmptyTile);
+}
