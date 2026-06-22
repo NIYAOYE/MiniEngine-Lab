@@ -1,0 +1,18 @@
+[
+  {
+    "id": "parsnip",
+    "name": "Parsnip",
+    "stageNames": ["seed", "sprout", "growing", "mature"],
+    "stageDays": [1, 1, 1, 1],
+    "harvestItemId": "parsnip",
+    "yield": 1
+  },
+  {
+    "id": "cauliflower",
+    "name": "Cauliflower",
+    "stageNames": ["seed", "sprout", "leafy", "heading", "mature"],
+    "stageDays": [2, 2, 2, 2, 2],
+    "harvestItemId": "cauliflower",
+    "yield": 1
+  }
+]

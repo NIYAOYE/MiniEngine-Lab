@@ -8,6 +8,7 @@
 #include "me/toolapi/ITool.h"
 
 namespace me::domain { struct CalendarTime; }
+namespace me::domain { struct CropInstance; class CropDatabase; }
 
 namespace me::toolapi {
 
@@ -31,7 +32,18 @@ nlohmann::json CalendarToJson(const me::domain::CalendarTime& c);
 
 // —— 时间型 Tool 工厂(M8.1)——
 std::unique_ptr<ITool> MakeTimeGetTool();     ///< time.get
-std::unique_ptr<ITool> MakeTimeAdvanceTool(); ///< time.advance(Task 5)
+std::unique_ptr<ITool> MakeTimeAdvanceTool(); ///< time.advance
+
+/// @brief CropInstance → JSON { x,y,cropId,stage,stageName,daysInStage,watered,mature }。
+nlohmann::json CropInstanceToJson(int x, int y, const me::domain::CropInstance& c,
+                                  const me::domain::CropDatabase& db);
+
+// —— 作物型 Tool 工厂(M8.2)——
+std::unique_ptr<ITool> MakeCropGetFieldTool(); ///< crop.get_field
+std::unique_ptr<ITool> MakeCropPlantTool();    ///< crop.plant
+std::unique_ptr<ITool> MakeCropWaterTool();    ///< crop.water
+std::unique_ptr<ITool> MakeCropAdvanceDaysTool(); ///< crop.advance_days
+std::unique_ptr<ITool> MakeCropHarvestTool();  ///< crop.harvest
 
 /// @brief 把 M6 首批全部 Tool 注册进 registry。
 void RegisterBuiltinTools(ToolRegistry& registry);
