@@ -40,7 +40,7 @@ public:
     /// @brief 显式推进整分钟(minutes 须 ≥ 1),返回跨界计数。
     TimeStep Advance(int minutes);
 
-    /// @brief 按真实经过秒数累积推进(Task 3 实现);返回聚合跨界计数。
+    /// @brief 按真实经过秒数累积推进;每满一步进吐 gameMinutesPerStep 分钟,返回聚合跨界计数。
     TimeStep Update(double realDeltaSeconds);
 
     /// @brief 当前日历视图。

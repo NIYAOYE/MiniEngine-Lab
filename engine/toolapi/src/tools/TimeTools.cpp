@@ -14,14 +14,15 @@ nlohmann::json CalendarToJson(const me::domain::CalendarTime& c) {
     };
 }
 
+namespace {
+
+// TimeStep → JSON(仅本 TU 内 time.advance 复用,故置匿名命名空间不外泄符号)。
 nlohmann::json TimeStepToJson(const me::domain::TimeStep& s) {
     return nlohmann::json{
         {"minutesAdvanced", s.minutesAdvanced}, {"daysCrossed", s.daysCrossed},
         {"seasonsCrossed", s.seasonsCrossed},   {"yearsCrossed", s.yearsCrossed},
     };
 }
-
-namespace {
 
 // time.get:返回当前日历视图(只读)。
 class TimeGetTool final : public ITool {

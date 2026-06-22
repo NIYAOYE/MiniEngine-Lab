@@ -7,7 +7,9 @@
 namespace me::domain {
 namespace {
 
-// 计算 [0, ...) 两个绝对分钟数落在不同 unit 桶时的跨界次数(floor 除法之差)。
+// 计算两个绝对分钟数落在不同 unit 桶时的跨界次数(floor 除法之差)。
+// 不变量:before/after 均 ≥ 0(时钟单调、纪元非负、Advance 要求 minutes≥1),
+// 故 C++ 截断除法在此恒等于 floor;若未来加 time.set/回拨支持负值须改用真 floor 除法。
 int CrossCount(long long before, long long after, long long unit) {
     return static_cast<int>(after / unit - before / unit);
 }
