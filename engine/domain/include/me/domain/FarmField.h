@@ -50,6 +50,10 @@ public:
     /// @brief 给瓦片上的作物浇水(幂等)。无作物返回 false。
     bool Water(int x, int y);
 
+    /// @brief 推进 n 天(n≥1);仅"已浇水"的当天计入生长,未浇水停滞。
+    ///        每天对每株:已浇水→daysInStage++、清浇水标记,满阶段天数且未成熟则进阶。
+    void AdvanceDays(int n);
+
     /// @brief 查瓦片作物;空返回 nullptr。
     const CropInstance* At(int x, int y) const;
 
@@ -60,6 +64,9 @@ public:
     const CropDatabase& Database() const { return db_; }
 
 private:
+    /// @brief 对所有作物推进单独一天。
+    void AdvanceOneDay();
+
     CropDatabase db_;
     std::map<TileKey, CropInstance> crops_;
 };

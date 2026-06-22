@@ -19,6 +19,26 @@ bool FarmField::Water(int x, int y) {
     return true;
 }
 
+void FarmField::AdvanceOneDay() {
+    for (auto& [key, crop] : crops_) {
+        (void)key;
+        if (!crop.watered) continue; // 未浇水:停滞
+        crop.watered = false;
+        crop.daysInStage++;
+        const CropConfig* cfg = db_.Find(crop.cropId);
+        if (cfg == nullptr) continue; // 防御:配置缺失则不推进(理论不该发生)
+        if (cfg->IsMatureStage(crop.stage)) continue; // 已成熟:不再前进
+        if (crop.daysInStage >= cfg->stageDays[crop.stage]) {
+            crop.stage++;
+            crop.daysInStage = 0;
+        }
+    }
+}
+
+void FarmField::AdvanceDays(int n) {
+    for (int i = 0; i < n; ++i) AdvanceOneDay();
+}
+
 const CropInstance* FarmField::At(int x, int y) const {
     auto it = crops_.find(TileKey{x, y});
     return it == crops_.end() ? nullptr : &it->second;
