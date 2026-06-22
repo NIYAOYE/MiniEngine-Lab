@@ -102,3 +102,36 @@ TEST_CASE("TimeSystem:Advance 从非零起点正确累加跨界") {
     auto s = ts.Advance(60);
     CHECK(s.daysCrossed == 1); // 50→110 跨过 100 边界一次
 }
+
+TEST_CASE("TimeSystem:Update 累满一步进吐分钟") {
+    auto cfg = SmallConfig();
+    cfg.realSecondsPerStep = 1.0;
+    cfg.gameMinutesPerStep = 10;
+    TimeSystem ts(cfg);
+    auto s = ts.Update(1.0); // 恰好一个步进
+    CHECK(s.minutesAdvanced == 10);
+    CHECK(ts.Now().minuteOfDay == 10);
+}
+
+TEST_CASE("TimeSystem:Update 不足一步进零跨越且保留余量") {
+    auto cfg = SmallConfig();
+    cfg.realSecondsPerStep = 1.0;
+    cfg.gameMinutesPerStep = 10;
+    TimeSystem ts(cfg);
+    auto s0 = ts.Update(0.4);
+    CHECK(s0.minutesAdvanced == 0);
+    CHECK(ts.Now().minuteOfDay == 0);
+    auto s1 = ts.Update(0.7); // 0.4 + 0.7 = 1.1 → 跨一个步进,余 0.1
+    CHECK(s1.minutesAdvanced == 10);
+    CHECK(ts.Now().minuteOfDay == 10);
+}
+
+TEST_CASE("TimeSystem:Update 一帧跨多步进聚合") {
+    auto cfg = SmallConfig();
+    cfg.realSecondsPerStep = 1.0;
+    cfg.gameMinutesPerStep = 10;
+    TimeSystem ts(cfg);
+    auto s = ts.Update(2.5); // 2 个完整步进
+    CHECK(s.minutesAdvanced == 20);
+    CHECK(ts.Now().minuteOfDay == 20);
+}

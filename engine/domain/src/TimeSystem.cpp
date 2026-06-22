@@ -44,8 +44,16 @@ TimeStep TimeSystem::Advance(int minutes) {
     return step;
 }
 
-TimeStep TimeSystem::Update(double) {
-    return {}; // Task 3 实现
+TimeStep TimeSystem::Update(double realDeltaSeconds) {
+    if (realDeltaSeconds > 0.0) realSecondAccumulator_ += realDeltaSeconds;
+
+    int minutesToAdvance = 0;
+    while (realSecondAccumulator_ >= config_.realSecondsPerStep) {
+        realSecondAccumulator_ -= config_.realSecondsPerStep;
+        minutesToAdvance += config_.gameMinutesPerStep;
+    }
+    if (minutesToAdvance == 0) return {}; // 不足一步进:零跨越,余量已保留
+    return Advance(minutesToAdvance);
 }
 
 CalendarTime TimeSystem::CalendarAt(long long total) const {
