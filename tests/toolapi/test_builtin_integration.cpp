@@ -8,14 +8,16 @@
 
 using namespace me::toolapi;
 
-TEST_CASE("Integration:RegisterBuiltinTools 注册全部 8 个 Tool") {
+TEST_CASE("Integration:RegisterBuiltinTools 注册全部 11 个 Tool") {
     ToolRegistry reg;
     RegisterBuiltinTools(reg);
-    CHECK(reg.Size() == 8);
+    CHECK(reg.Size() == 11);
     auto names = reg.ListNames();
-    // 字典序前两个不变(time.* 排在 scene.* 之后)
-    CHECK(names[0] == "entity.set_transform");
-    CHECK(names[1] == "log.read");
+    // 字典序:crop.* 排在最前,entity.* 次之
+    CHECK(names[0] == "crop.get_field");
+    CHECK(names[1] == "crop.plant");
+    CHECK(names[2] == "crop.water");
+    CHECK(names[3] == "entity.set_transform");
 }
 
 TEST_CASE("Integration:create→set_transform→list→destroy→undo 全链路") {

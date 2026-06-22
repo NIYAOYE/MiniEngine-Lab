@@ -37,6 +37,7 @@ add_executable(me_tests
     toolapi/test_mutation_tools.cpp
     toolapi/test_builtin_integration.cpp
     toolapi/test_time_tools.cpp
+    toolapi/test_crop_tools.cpp
     editor/test_editor_controller.cpp
     domain/test_time_config.cpp
     domain/test_time_system.cpp
