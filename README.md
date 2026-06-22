@@ -36,6 +36,7 @@ ctest --test-dir build -C Debug --output-on-failure   # 含 WARP 像素回读 GP
 - `engine/platform`(`me_platform`):计时、文件系统;Win32 窗口/输入(仅 Windows)。
 - `engine/rhi`(`me_rhi_cpu` / `me_rhi`):DX12 薄封装。`me_rhi_cpu` 为跨平台纯逻辑(同步/帧环/描述符/几何/精灵矩阵);`me_rhi` 为 Windows-only DX12 实现(Device/SwapChain/CommandContext/Fence/DescriptorHeap/GpuBuffer/GpuTexture/Shader/像素回读)。
 - `engine/assets`(`me_assets`):图片解码(stb_image)→ RGBA8(跨平台)。
+- `engine/domain`(`me_domain`):农场领域层(跨平台)。M8.1 时间系统(四级日历 + TimeSystem,数据驱动,CPU-only)。
 - `engine/renderer`(`me_renderer`,仅 Windows):SpriteRenderer(单精灵:根签名+PSO+单位四边形)。
 - `sandbox`(仅 Windows):开窗 + DX12 上屏目视沙盒。
 - `tests`(`me_tests` / `me_gpu_tests`):doctest 单元测试 / WARP GPU 像素回读测试。

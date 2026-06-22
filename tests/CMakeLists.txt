@@ -36,10 +36,13 @@ add_executable(me_tests
     toolapi/test_query_tools.cpp
     toolapi/test_mutation_tools.cpp
     toolapi/test_builtin_integration.cpp
+    toolapi/test_time_tools.cpp
     editor/test_editor_controller.cpp
+    domain/test_time_config.cpp
+    domain/test_time_system.cpp
 )
 
-target_link_libraries(me_tests PRIVATE doctest::doctest me_core me_platform me_rhi_cpu me_assets me_scene me_command me_toolapi me_editor)
+target_link_libraries(me_tests PRIVATE doctest::doctest me_core me_platform me_rhi_cpu me_assets me_scene me_command me_toolapi me_editor me_domain)
 
 target_include_directories(me_tests PRIVATE ${CMAKE_SOURCE_DIR}/engine/renderer/include)
 

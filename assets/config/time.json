@@ -1,0 +1,12 @@
+{
+    "minutesPerDay": 1440,
+    "daysPerSeason": 28,
+    "seasonsPerYear": 4,
+    "seasonNames": ["Spring", "Summer", "Fall", "Winter"],
+    "gameMinutesPerStep": 10,
+    "realSecondsPerStep": 7.0,
+    "startYear": 1,
+    "startSeason": 0,
+    "startDay": 1,
+    "startMinute": 360
+}
