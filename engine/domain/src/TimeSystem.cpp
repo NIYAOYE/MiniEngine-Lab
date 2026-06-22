@@ -12,6 +12,8 @@ int CrossCount(long long before, long long after, long long unit) {
     return static_cast<int>(after / unit - before / unit);
 }
 
+constexpr int kMinutesPerHour = 60; // 现实分钟/小时(非游戏可调值)
+
 } // namespace
 
 TimeSystem::TimeSystem(TimeConfig config) : config_(std::move(config)) {
@@ -61,11 +63,12 @@ CalendarTime TimeSystem::CalendarAt(long long total) const {
     CalendarTime t;
     t.year = config_.startYear + static_cast<int>(years);
     t.season = static_cast<int>(season);
+    ME_ASSERT(static_cast<std::size_t>(season) < config_.seasonNames.size());
     t.seasonName = config_.seasonNames[static_cast<std::size_t>(season)];
     t.dayOfSeason = static_cast<int>(dayIdx) + 1;
     t.minuteOfDay = static_cast<int>(minOfDay);
-    t.hour = t.minuteOfDay / 60;
-    t.minute = t.minuteOfDay % 60;
+    t.hour = t.minuteOfDay / kMinutesPerHour;
+    t.minute = t.minuteOfDay % kMinutesPerHour;
     return t;
 }
 
