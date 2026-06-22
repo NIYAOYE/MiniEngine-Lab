@@ -208,7 +208,7 @@ M6/M7 既有构造保持有效(默认 nullptr),不破坏现有测试。
 - **`FarmField` 域操作**:返回带状态的结果类型,由 Tool 层翻译为结构化 `ToolResult`:
   - 瓦片已占用 / 空瓦片 / cropId 不存在 / 未成熟收获 → `PreconditionFailed`(带具体 message)。
   - `ctx.farm == nullptr` → `PreconditionFailed`。
-  - 参数缺失/类型错由 Registry 的 Schema 校验**前置**拦截(`InvalidArgument`),Tool 内不重复校验。
+  - 参数缺失/类型错由 Registry 的 Schema 校验**前置**拦截(`InvalidParams`),Tool 内不重复校验。
 - **零魔法数字**:阶段数、产出等全部来自 `CropDatabase`;源码无裸常量。
 
 ## 7. 测试策略(全 CPU-only doctest,WSL 红绿)

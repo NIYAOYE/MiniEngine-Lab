@@ -1,7 +1,5 @@
 #include "me/domain/CropConfig.h"
 
-#include <algorithm>
-
 namespace me::domain {
 
 const CropConfig* CropDatabase::Find(const std::string& id) const {
