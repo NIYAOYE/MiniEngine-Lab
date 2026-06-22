@@ -13,6 +13,8 @@ void RegisterBuiltinTools(ToolRegistry& registry) {
     registry.Register(MakeCreateEntityTool());
     registry.Register(MakeDestroyEntityTool());
     registry.Register(MakeSetTransformTool());
+    // 时间型(M8.1)
+    registry.Register(MakeTimeGetTool());
 }
 
 } // namespace me::toolapi

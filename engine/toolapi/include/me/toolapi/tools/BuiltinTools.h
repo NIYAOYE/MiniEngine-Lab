@@ -7,6 +7,8 @@
 #include "me/core/Transform2D.h"
 #include "me/toolapi/ITool.h"
 
+namespace me::domain { struct CalendarTime; }
+
 namespace me::toolapi {
 
 class ToolRegistry;
@@ -23,6 +25,13 @@ std::unique_ptr<ITool> MakeLogReadTool();      ///< log.read
 std::unique_ptr<ITool> MakeCreateEntityTool();  ///< scene.create_entity
 std::unique_ptr<ITool> MakeDestroyEntityTool(); ///< scene.destroy_entity
 std::unique_ptr<ITool> MakeSetTransformTool();  ///< entity.set_transform
+
+/// @brief CalendarTime → JSON { year, season, seasonName, dayOfSeason, minuteOfDay, hour, minute }。
+nlohmann::json CalendarToJson(const me::domain::CalendarTime& c);
+
+// —— 时间型 Tool 工厂(M8.1)——
+std::unique_ptr<ITool> MakeTimeGetTool();     ///< time.get
+std::unique_ptr<ITool> MakeTimeAdvanceTool(); ///< time.advance(Task 5)
 
 /// @brief 把 M6 首批全部 Tool 注册进 registry。
 void RegisterBuiltinTools(ToolRegistry& registry);
