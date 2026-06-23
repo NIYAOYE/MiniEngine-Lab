@@ -61,3 +61,20 @@ if(WIN32)
     # DX12 后端所需系统库。
     target_link_libraries(imgui PUBLIC d3d12 dxgi)
 endif()
+
+# cpp-httplib:单头 HTTP/JSON 服务库(M9.1 Tool 传输层)。
+# 用 release tarball URL 而非 git clone,避免全量历史(沿用 nlohmann 教训)。
+FetchContent_Declare(
+    cpp_httplib
+    URL https://github.com/yhirose/cpp-httplib/archive/refs/tags/v0.18.3.tar.gz
+)
+FetchContent_MakeAvailable(cpp_httplib)
+
+# 单头封装:INTERFACE target,头文件 httplib.h 在解压根目录。
+# 默认不启用 OpenSSL(无 HTTPS);需要线程库。
+find_package(Threads REQUIRED)
+add_library(cpp_httplib INTERFACE)
+add_library(cpp_httplib::cpp_httplib ALIAS cpp_httplib)
+target_include_directories(cpp_httplib INTERFACE ${cpp_httplib_SOURCE_DIR})
+target_link_libraries(cpp_httplib INTERFACE Threads::Threads)
+# 提供 target: cpp_httplib::cpp_httplib
