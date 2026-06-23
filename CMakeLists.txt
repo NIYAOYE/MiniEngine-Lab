@@ -47,6 +47,9 @@ if(ME_BUILD_TESTS)
     add_subdirectory(tests)
 endif()
 
+# 无头 Tool 服务器(HTTP+JSON 传输层),跨平台,不依赖 DX12。
+add_subdirectory(apps/toolserver)
+
 # 目视沙盒(开窗 + DX12 上屏),仅 Windows 构建。
 if(WIN32)
     add_subdirectory(sandbox)
