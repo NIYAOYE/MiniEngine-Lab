@@ -41,10 +41,14 @@ add_subdirectory(engine/toolapi)
 add_subdirectory(engine/renderer)
 add_subdirectory(engine/editor)
 add_subdirectory(engine/domain)
+add_subdirectory(engine/toolserver)
 
 if(ME_BUILD_TESTS)
     add_subdirectory(tests)
 endif()
+
+# 无头 Tool 服务器(HTTP+JSON 传输层),跨平台,不依赖 DX12。
+add_subdirectory(apps/toolserver)
 
 # 目视沙盒(开窗 + DX12 上屏),仅 Windows 构建。
 if(WIN32)

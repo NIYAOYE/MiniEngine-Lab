@@ -2,7 +2,7 @@
 
 - **日期**:2026-06-22
 - **里程碑**:M9 切片 1 —— Agent-ready 传输层(为外部语言编辑器 UI + 未来 LLM agent 提供统一入口)
-- **状态**:已确认,待写实现计划
+- **状态**:已实现(M9.1,见 plans/2026-06-23-m9-1-toolserver-http-transport.md + ADR 0008)
 - **前置**:M6 ToolAPI(ToolRegistry/ToolContext/ToolResult/权限/审计)、M8.1 时间、M8.2 作物(共 13 Tool)
 
 ## 0. 背景与动机
