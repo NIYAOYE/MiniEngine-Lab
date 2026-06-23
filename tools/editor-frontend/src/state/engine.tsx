@@ -22,6 +22,7 @@ import {
   getHistory,
   invoke,
   listTools,
+  seedDemoWorld,
   subscribeHistory,
 } from '@/lib/toolClient';
 import { LOCAL_LABELS } from '@/data/labels';
@@ -215,8 +216,16 @@ export function EngineProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void (async () => {
       setTools(await listTools());
-      const details = await refreshEntities();
+      let details = await refreshEntities();
       await refreshField();
+      // The headless engine starts empty (no tmj→Scene loader yet). Seed a demo
+      // world via real Tool calls so a freshly connected client sees content.
+      // No-op against the pre-seeded mock (it's never empty here).
+      if (Object.keys(details).length === 0) {
+        await seedDemoWorld();
+        details = await refreshEntities();
+        await refreshField();
+      }
       await refreshTime();
       // Populate the inspector with a sensible default (silent — load shouldn't
       // spam the audit log). Player entity if present, else first root.

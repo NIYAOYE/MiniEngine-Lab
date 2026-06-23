@@ -1,4 +1,5 @@
 import { useEngine } from '@/state/engine';
+import { TRANSPORT_LABEL } from '@/lib/toolClient';
 
 /** Bottom status bar (≈36px, fixed). */
 export function StatusBar() {
@@ -9,7 +10,7 @@ export function StatusBar() {
         <span
           className={`h-2 w-2 rounded-full ${busy ? 'bg-accent animate-pulse' : 'bg-ok shadow-[0_0_6px_#69b84f]'}`}
         />
-        连接状态:{busy ? '调用中…' : '已连接(mock)'}
+        传输:{busy ? '调用中…' : TRANSPORT_LABEL}
       </span>
       <span className="h-3 w-px bg-line" />
       <span>项目:<span className="text-txt mono">demo_farm</span></span>
