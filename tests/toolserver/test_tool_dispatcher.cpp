@@ -167,3 +167,33 @@ TEST_CASE("ToolDispatcher:role 缺省为 Editor — time.advance 放行") {
         f.dispatcher.HandleInvoke(R"({"name":"time.advance","params":{"minutes":10}})"));
     CHECK(out["ok"] == true);
 }
+
+TEST_CASE("ToolDispatcher:HandleListTools 返回 13 条带元数据") {
+    Fixture f;
+    const json tools = json::parse(f.dispatcher.HandleListTools());
+    REQUIRE(tools.is_array());
+    CHECK(tools.size() == 13);
+
+    // 收集成 name → 条目,便于断言具体 Tool。
+    json byName = json::object();
+    for (const auto& t : tools) {
+        REQUIRE(t.contains("name"));
+        REQUIRE(t.contains("category"));
+        REQUIRE(t.contains("permission"));
+        REQUIRE(t.contains("paramsSchema"));
+        byName[t["name"].get<std::string>()] = t;
+    }
+
+    REQUIRE(byName.contains("entity.set_transform"));
+    CHECK(byName["entity.set_transform"]["category"] == "Mutation");
+    CHECK(byName["entity.set_transform"]["permission"] == "Automation");
+    // paramsSchema 是 JSON Schema 子集对象,含 required 列表。
+    CHECK(byName["entity.set_transform"]["paramsSchema"]["type"] == "object");
+
+    REQUIRE(byName.contains("scene.list_entities"));
+    CHECK(byName["scene.list_entities"]["category"] == "Query");
+    CHECK(byName["scene.list_entities"]["permission"] == "AgentAllowed");
+
+    REQUIRE(byName.contains("scene.destroy_entity"));
+    CHECK(byName["scene.destroy_entity"]["permission"] == "EditorOnly");
+}

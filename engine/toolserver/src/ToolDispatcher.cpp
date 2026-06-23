@@ -4,6 +4,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include "me/toolapi/ITool.h"   // ToolCategory / ITool 元数据
 #include "me/toolapi/Permission.h"
 #include "me/toolapi/ToolContext.h"
 #include "me/toolapi/ToolRegistry.h"
@@ -13,6 +14,9 @@ namespace me::toolserver {
 namespace {
 
 using me::toolapi::CallerRole;
+using me::toolapi::ITool;
+using me::toolapi::Permission;
+using me::toolapi::ToolCategory;
 using me::toolapi::ToolErrorCode;
 using me::toolapi::ToolResult;
 
@@ -27,6 +31,25 @@ std::optional<CallerRole> ParseRole(const std::string& s) {
 /// @brief 把失败 ToolResult 序列化为 JSON 字符串(统一出口)。
 std::string ErrorJson(ToolErrorCode code, const std::string& msg) {
     return ToolResult::Error(code, msg).toJson().dump();
+}
+
+/// @brief ToolCategory 枚举 → 字符串。
+const char* CategoryToString(ToolCategory c) {
+    switch (c) {
+        case ToolCategory::Query:    return "Query";
+        case ToolCategory::Mutation: return "Mutation";
+    }
+    return "Unknown"; // 穷尽 switch 后兜底
+}
+
+/// @brief Permission 枚举 → 字符串。
+const char* PermissionToString(Permission p) {
+    switch (p) {
+        case Permission::AgentAllowed: return "AgentAllowed";
+        case Permission::Automation:   return "Automation";
+        case Permission::EditorOnly:   return "EditorOnly";
+    }
+    return "Unknown"; // 穷尽 switch 后兜底
 }
 
 } // namespace
@@ -80,7 +103,18 @@ std::string ToolDispatcher::HandleInvoke(const std::string& jsonBody) {
 
 std::string ToolDispatcher::HandleListTools() {
     std::lock_guard<std::mutex> lock(mutex_);
-    return nlohmann::json::array().dump(); // Task 4 补实现
+    nlohmann::json arr = nlohmann::json::array();
+    for (const std::string& name : registry_.ListNames()) {
+        const me::toolapi::ITool* tool = registry_.Find(name);
+        if (!tool) continue; // ListNames 与 Find 同源,理论不发生;防御
+        arr.push_back({
+            {"name",       tool->name()},
+            {"category",   CategoryToString(tool->category())},
+            {"permission", PermissionToString(tool->permission())},
+            {"paramsSchema", tool->paramsSchema()},
+        });
+    }
+    return arr.dump();
 }
 
 } // namespace me::toolserver
