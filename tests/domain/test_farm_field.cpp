@@ -177,3 +177,28 @@ TEST_CASE("FarmField:空瓦片收获返回 EmptyTile") {
     auto r = field.Harvest(7, 7);
     CHECK(r.status == HarvestStatus::EmptyTile);
 }
+
+TEST_CASE("FarmField:PeekHarvest 不清瓦片") {
+    FarmField field(MakeDb());
+    REQUIRE(field.Plant(0, 0, "parsnip") == PlantStatus::Ok);
+    for (int day = 0; day < 4; ++day) { // 推到成熟(parsnip 4 阶段)
+        REQUIRE(field.Water(0, 0));
+        field.AdvanceDays(1);
+    }
+    auto peek = field.PeekHarvest(0, 0);
+    CHECK(peek.status == HarvestStatus::Ok);
+    CHECK(peek.itemId == "parsnip");
+    CHECK(peek.count == 1);
+    CHECK(field.At(0, 0) != nullptr); // 预判后瓦片仍在
+
+    auto h = field.Harvest(0, 0);     // 真收获才清
+    CHECK(h.status == HarvestStatus::Ok);
+    CHECK(field.At(0, 0) == nullptr);
+}
+
+TEST_CASE("FarmField:PeekHarvest 未成熟/空瓦片如实报状态") {
+    FarmField field(MakeDb());
+    CHECK(field.PeekHarvest(9, 9).status == HarvestStatus::EmptyTile);
+    REQUIRE(field.Plant(1, 1, "parsnip") == PlantStatus::Ok);
+    CHECK(field.PeekHarvest(1, 1).status == HarvestStatus::NotMature);
+}

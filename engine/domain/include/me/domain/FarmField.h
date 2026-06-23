@@ -68,6 +68,9 @@ public:
     ///        每天对每株:已浇水→daysInStage++、清浇水标记,满阶段天数且未成熟则进阶。
     void AdvanceDays(int n);
 
+    /// @brief 非破坏性预判:返回 Harvest 将产出的结果(itemId/count/状态),但不清瓦片。
+    HarvestResult PeekHarvest(int x, int y) const;
+
     /// @brief 收获成熟作物:返回产出并清空该瓦片;未成熟/空瓦片返回对应状态。
     HarvestResult Harvest(int x, int y);
 

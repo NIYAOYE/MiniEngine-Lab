@@ -39,7 +39,7 @@ void FarmField::AdvanceDays(int n) {
     for (int i = 0; i < n; ++i) AdvanceOneDay();
 }
 
-HarvestResult FarmField::Harvest(int x, int y) {
+HarvestResult FarmField::PeekHarvest(int x, int y) const {
     auto it = crops_.find(TileKey{x, y});
     if (it == crops_.end()) return HarvestResult{HarvestStatus::EmptyTile, {}, 0};
 
@@ -48,8 +48,12 @@ HarvestResult FarmField::Harvest(int x, int y) {
     if (cfg == nullptr || !cfg->IsMatureStage(it->second.stage))
         return HarvestResult{HarvestStatus::NotMature, {}, 0};
 
-    HarvestResult out{HarvestStatus::Ok, cfg->harvestItemId, cfg->yield};
-    crops_.erase(it); // 清空瓦片
+    return HarvestResult{HarvestStatus::Ok, cfg->harvestItemId, cfg->yield};
+}
+
+HarvestResult FarmField::Harvest(int x, int y) {
+    HarvestResult out = PeekHarvest(x, y);
+    if (out.status == HarvestStatus::Ok) crops_.erase(TileKey{x, y}); // 仅成功时清瓦片
     return out;
 }
 
