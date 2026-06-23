@@ -145,3 +145,25 @@ TEST_CASE("ToolDispatcher:destroy 不存在实体 → PreconditionFailed") {
     CHECK(out["ok"] == false);
     CHECK(out["code"] == "PreconditionFailed");
 }
+
+TEST_CASE("ToolDispatcher:role 裁决 — Agent 调 time.advance(Automation)被拒") {
+    Fixture f;
+    const json out = json::parse(f.dispatcher.HandleInvoke(
+        R"({"name":"time.advance","params":{"minutes":10},"role":"Agent"})"));
+    CHECK(out["ok"] == false);
+    CHECK(out["code"] == "PermissionDenied");
+}
+
+TEST_CASE("ToolDispatcher:role 裁决 — Automation 调 time.advance 放行") {
+    Fixture f;
+    const json out = json::parse(f.dispatcher.HandleInvoke(
+        R"({"name":"time.advance","params":{"minutes":10},"role":"Automation"})"));
+    CHECK(out["ok"] == true);
+}
+
+TEST_CASE("ToolDispatcher:role 缺省为 Editor — time.advance 放行") {
+    Fixture f;
+    const json out = json::parse(
+        f.dispatcher.HandleInvoke(R"({"name":"time.advance","params":{"minutes":10}})"));
+    CHECK(out["ok"] == true);
+}
