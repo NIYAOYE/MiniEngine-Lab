@@ -73,6 +73,16 @@ TEST_CASE("ItemConfig:非法配置返回 nullopt") {
         j["items"][0]["id"] = "";
         CHECK_FALSE(LoadInventoryConfig(j).has_value());
     }
+    SUBCASE("空 name") {
+        auto j = ValidItemsJson();
+        j["items"][0]["name"] = "";
+        CHECK_FALSE(LoadInventoryConfig(j).has_value());
+    }
+    SUBCASE("空 category") {
+        auto j = ValidItemsJson();
+        j["items"][0]["category"] = "";
+        CHECK_FALSE(LoadInventoryConfig(j).has_value());
+    }
     SUBCASE("id 重复") {
         auto j = ValidItemsJson();
         j["items"][1]["id"] = "parsnip";
