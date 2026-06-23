@@ -5,6 +5,8 @@
 #include "me/command/CommandStack.h"
 #include "me/domain/CropConfig.h"
 #include "me/domain/FarmField.h"
+#include "me/domain/Inventory.h"
+#include "me/domain/ItemConfig.h"
 #include "me/domain/TimeConfig.h"
 #include "me/domain/TimeSystem.h"
 #include "me/scene/Scene.h"
@@ -32,6 +34,17 @@ me::domain::TimeConfig MakeTimeConfig() {
     return c;
 }
 
+me::domain::InventoryConfig MakeInvDb() {
+    auto cfg = me::domain::LoadInventoryConfig(nlohmann::json{
+        {"capacity", 8},
+        {"items",
+         nlohmann::json::array(
+             {{{"id", "parsnip"}, {"name", "Parsnip"}, {"category", "crop"},
+               {"maxStack", 99}, {"sellPrice", 35}}})}});
+    REQUIRE(cfg.has_value());
+    return *cfg;
+}
+
 me::domain::CropDatabase MakeCropDb() {
     auto db = me::domain::LoadCropDatabase(json::array({
         {{"id", "parsnip"},
@@ -45,13 +58,14 @@ me::domain::CropDatabase MakeCropDb() {
     return *db;
 }
 
-/// @brief 拥有全部引擎状态 + 13 Tool 的可复用 dispatcher 夹具。
+/// @brief 拥有全部引擎状态 + 16 Tool 的可复用 dispatcher 夹具。
 struct Fixture {
     me::scene::Scene scene;
     me::command::CommandStack stack;
     me::toolapi::ToolInvocationLog log;
     me::domain::TimeSystem time;
     me::domain::FarmField farm;
+    me::domain::Inventory inventory;
     me::toolapi::ToolRegistry registry;
     me::toolapi::ToolContext ctx;
     me::toolserver::ToolDispatcher dispatcher;
@@ -59,7 +73,8 @@ struct Fixture {
     Fixture()
         : time(MakeTimeConfig()),
           farm(MakeCropDb()),
-          ctx{scene, stack, log, &time, &farm},
+          inventory([]() { auto c = MakeInvDb(); return me::domain::Inventory(c.items, c.capacity); }()),
+          ctx{scene, stack, log, &time, &farm, &inventory},
           dispatcher(ctx, registry) {
         me::toolapi::RegisterBuiltinTools(registry);
     }
@@ -223,4 +238,22 @@ TEST_CASE("ToolDispatcher:crop.plant 后 crop.get_field 可见") {
     REQUIRE(field["ok"] == true);
     REQUIRE(field["data"]["crops"].size() == 1);
     CHECK(field["data"]["crops"][0]["cropId"] == "parsnip");
+}
+
+TEST_CASE("ToolDispatcher:inventory.add 后 inventory.get 反映库存") {
+    Fixture f;
+
+    // Automation 角色通过 dispatcher 字符串路径加入 3 个 parsnip。
+    const json add = json::parse(f.dispatcher.HandleInvoke(
+        R"({"name":"inventory.add","params":{"itemId":"parsnip","count":3},"role":"Automation"})"));
+    REQUIRE(add["ok"] == true);
+    CHECK(add["code"] == "Ok");
+
+    // Agent 角色查询库存,确认格位与数量。
+    const json get = json::parse(f.dispatcher.HandleInvoke(
+        R"({"name":"inventory.get","role":"Agent"})"));
+    REQUIRE(get["ok"] == true);
+    CHECK(get["data"]["used"] == 1);
+    CHECK(get["data"]["slots"][0]["itemId"] == "parsnip");
+    CHECK(get["data"]["slots"][0]["count"] == 3);
 }
