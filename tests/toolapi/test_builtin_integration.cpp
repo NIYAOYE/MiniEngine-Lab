@@ -8,10 +8,10 @@
 
 using namespace me::toolapi;
 
-TEST_CASE("Integration:RegisterBuiltinTools 注册全部 13 个 Tool") {
+TEST_CASE("Integration:RegisterBuiltinTools 注册全部 16 个 Tool") {
     ToolRegistry reg;
     RegisterBuiltinTools(reg);
-    CHECK(reg.Size() == 13);
+    CHECK(reg.Size() == 16);
     auto names = reg.ListNames();
     // 字典序:crop.* 排在最前(advance_days < get_field < harvest < plant < water),entity.* 次之
     CHECK(names[0] == "crop.advance_days");

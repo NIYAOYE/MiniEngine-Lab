@@ -168,11 +168,11 @@ TEST_CASE("ToolDispatcher:role 缺省为 Editor — time.advance 放行") {
     CHECK(out["ok"] == true);
 }
 
-TEST_CASE("ToolDispatcher:HandleListTools 返回 13 条带元数据") {
+TEST_CASE("ToolDispatcher:HandleListTools 返回 16 条带元数据") {
     Fixture f;
     const json tools = json::parse(f.dispatcher.HandleListTools());
     REQUIRE(tools.is_array());
-    CHECK(tools.size() == 13);
+    CHECK(tools.size() == 16);
 
     // 收集成 name → 条目,便于断言具体 Tool。
     json byName = json::object();

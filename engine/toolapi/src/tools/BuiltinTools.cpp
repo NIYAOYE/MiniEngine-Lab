@@ -22,6 +22,10 @@ void RegisterBuiltinTools(ToolRegistry& registry) {
     registry.Register(MakeCropWaterTool());
     registry.Register(MakeCropAdvanceDaysTool());
     registry.Register(MakeCropHarvestTool());
+    // 库存型(M8.3)
+    registry.Register(MakeInventoryGetTool());
+    registry.Register(MakeInventoryAddTool());
+    registry.Register(MakeInventoryRemoveTool());
 }
 
 } // namespace me::toolapi

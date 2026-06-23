@@ -9,6 +9,7 @@
 
 namespace me::domain { struct CalendarTime; }
 namespace me::domain { struct CropInstance; class CropDatabase; }
+namespace me::domain { class Inventory; }
 
 namespace me::toolapi {
 
@@ -44,6 +45,14 @@ std::unique_ptr<ITool> MakeCropPlantTool();    ///< crop.plant
 std::unique_ptr<ITool> MakeCropWaterTool();    ///< crop.water
 std::unique_ptr<ITool> MakeCropAdvanceDaysTool(); ///< crop.advance_days
 std::unique_ptr<ITool> MakeCropHarvestTool();  ///< crop.harvest
+
+/// @brief Inventory → JSON { capacity, used, slots:[{slot,itemId,count}] }。
+nlohmann::json InventoryToJson(const me::domain::Inventory& inv);
+
+// —— 库存型 Tool 工厂(M8.3)——
+std::unique_ptr<ITool> MakeInventoryGetTool();    ///< inventory.get
+std::unique_ptr<ITool> MakeInventoryAddTool();    ///< inventory.add
+std::unique_ptr<ITool> MakeInventoryRemoveTool(); ///< inventory.remove
 
 /// @brief 把 M6 首批全部 Tool 注册进 registry。
 void RegisterBuiltinTools(ToolRegistry& registry);
