@@ -40,3 +40,6 @@ ctest --test-dir build -C Debug --output-on-failure   # 含 WARP 像素回读 GP
 - `engine/renderer`(`me_renderer`,仅 Windows):SpriteRenderer(单精灵:根签名+PSO+单位四边形)。
 - `sandbox`(仅 Windows):开窗 + DX12 上屏目视沙盒。
 - `tests`(`me_tests` / `me_gpu_tests`):doctest 单元测试 / WARP GPU 像素回读测试。
+
+## 工具(非 CMake)
+- `tools/editor-frontend`(React 18 + TS + Vite + Tailwind):Farm Editor 前端原型。全部交互经统一 `invoke(name, params, role)` 调用 13 个 Tool;当前为 **mock 传输**(内存引擎,形状严格对齐契约),日后把 mock 换成对 HTTP 传输层(`127.0.0.1:8080`)的 `fetch` 即可,UI 零改动。`cd tools/editor-frontend && npm install && npm run dev`,详见该目录 README。

@@ -122,6 +122,7 @@ M1 精灵上屏已完成:Win32 Window/Input + RHI(GpuDevice/SwapChain/CommandCon
 | 2026-06-22 | AI 美术经 tools/pack_atlas.py 处理入库(地面图集 + 抠底物件精灵);largeImage 源图不入库 | 数据驱动美术管线;生成纹理小体积入库供 clone 直接运行,大图源外置 |
 | 2026-06-22 | 作物存 me_domain 独立 FarmField(非 Scene 组件)+ 浇水驱动状态机(daysInStage 计已浇水天数) | 沿用 TimeSystem 先例纯 CPU 可测;未浇水停滞符合星露谷核心循环(见 ADR 0007) |
 | 2026-06-22 | 5 crop Tool;crop 变更不经 CommandStack(运行时态例外),harvest=EditorOnly | 沿用 ADR 0006 例外;harvest 销毁性产出收紧权限;产出不入库留 M8.3 |
+| 2026-06-22 | 新增 `tools/editor-frontend`(React18+TS+Vite+Tailwind,非 CMake)Farm Editor 前端原型:全交互经统一 `invoke()` 调 13 Tool,**mock 传输**(内存引擎守真实权限/ToolResult/作物·实体语义/审计=客户端调用历史) | 从客户端视角验证 Tool 契约对外可用(Agent/编辑器);形状严格对齐契约,日后换 `fetch`(HTTP 传输层)UI 零改动;实体名/组件/undo-redo 标注为 future 占位不臆造 |
 
 ## 待解决 / 开放问题
 
