@@ -2,6 +2,7 @@
 
 #include <httplib.h>
 
+#include "me/core/Log.h"
 #include "me/toolserver/ToolDispatcher.h"
 
 namespace me::toolserver {
@@ -30,7 +31,9 @@ bool HttpToolServer::Run() {
     });
     if (!staticRoot_.empty()) {
         // 同源服务前端静态资源(免 CORS);失败不致命(端点仍可用)。
-        server_->set_mount_point("/", staticRoot_);
+        if (!server_->set_mount_point("/", staticRoot_)) {
+            ME_LOG_WARN("静态根目录不存在或无法挂载: " + staticRoot_);
+        }
     }
 
     return server_->listen(host_, port_); // 阻塞直到 Stop()

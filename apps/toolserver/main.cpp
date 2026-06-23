@@ -1,6 +1,5 @@
 // MiniEngine 无头 Tool 服务器:加载 time/crops 配置,组装受控上下文,跑本地 HTTP 服务。
 // 不链接 RHI/DX12;场景以空场景启动,经 scene.create_entity 编辑(见计划范围说明)。
-#include <atomic>
 #include <csignal>
 #include <cstdlib>
 #include <string>
@@ -91,7 +90,9 @@ int main(int argc, char** argv) {
     std::signal(SIGINT, HandleSigint);
 
     ME_LOG_INFO("Tool 服务器监听 http://" + std::string(srv::kBindHost) + ":" + std::to_string(port) + " (Ctrl+C 退出)");
-    if (!server.Run()) { // 阻塞
+    const bool ok = server.Run(); // 阻塞
+    g_server = nullptr;           // 防第二次 SIGINT 触发悬空指针
+    if (!ok) {
         ME_LOG_ERROR("监听失败(端口 " + std::to_string(port) + " 可能被占用)");
         return 1;
     }
