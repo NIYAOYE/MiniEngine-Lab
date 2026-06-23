@@ -2,10 +2,14 @@
 
 #include <algorithm>
 
+#include "me/core/Assert.h"
+
 namespace me::domain {
 
 Inventory::Inventory(ItemDatabase db, int capacity)
-    : db_(std::move(db)), slots_(static_cast<std::size_t>(capacity < 0 ? 0 : capacity)) {}
+    : db_(std::move(db)), slots_(static_cast<std::size_t>(capacity < 0 ? 0 : capacity)) {
+    ME_ASSERT(capacity >= 1); // 容量为调用方契约:有效库存至少 1 格
+}
 
 int Inventory::FreeSpaceFor(const std::string& itemId, int maxStack) const {
     int free = 0;
@@ -26,12 +30,14 @@ int Inventory::CountOf(const std::string& itemId) const {
 }
 
 bool Inventory::CanAdd(const std::string& itemId, int count) const {
+    ME_ASSERT(count > 0); // 调用方契约:数量恒为正(上游 Schema minimum:1 保证)
     const ItemConfig* cfg = db_.Find(itemId);
     if (cfg == nullptr) return false;
     return FreeSpaceFor(itemId, cfg->maxStack) >= count;
 }
 
 AddResult Inventory::Add(const std::string& itemId, int count) {
+    ME_ASSERT(count > 0); // 调用方契约:数量恒为正(上游 Schema minimum:1 保证)
     const ItemConfig* cfg = db_.Find(itemId);
     if (cfg == nullptr) return AddResult{AddStatus::UnknownItem, 0};
     const int maxStack = cfg->maxStack;
@@ -61,6 +67,7 @@ AddResult Inventory::Add(const std::string& itemId, int count) {
 }
 
 RemoveResult Inventory::Remove(const std::string& itemId, int count) {
+    ME_ASSERT(count > 0); // 调用方契约:数量恒为正(上游 Schema minimum:1 保证)
     if (CountOf(itemId) < count) return RemoveResult{RemoveStatus::NotEnough, 0};
 
     int remaining = count;
