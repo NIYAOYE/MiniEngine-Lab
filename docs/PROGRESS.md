@@ -55,7 +55,7 @@ M1 精灵上屏已完成:Win32 Window/Input + RHI(GpuDevice/SwapChain/CommandCon
 | M8 农场领域层 | ◐ | M8.1 时间系统 ☑;M8.2 作物生长 ☑(FarmField + CropDatabase + 5 Tool + doctest 全绿);M8.3 库存 ☑(Inventory 格位网格 + ItemDatabase + 3 inventory Tool + harvest 原子直写;231/231 全绿);M8.4 NPC 日程调度 ☐ |
 | **M9.1 Tool HTTP 传输层** | ☑ | me_toolserver(ToolDispatcher + HttpToolServer)+ toolserver_app;三端点;串行锁;208/208 全绿 |
 | **网页编辑器前端接线** | ☑ | toolClient mock→真实 fetch(Vite `/api` 代理→:8080);`VITE_USE_MOCK` 回退;`seedDemoWorld` 空场景引导;typecheck 通过、UI 零改动 |
-| M9+ 未来 | ☐ | M8.3 库存;对话/配方数据驱动、2D 物理/碰撞、存档;reparent/set_name Tool(接线缺口);未来 Agent/LLM 接入白名单 Tool |
+| M9+ 未来 | ☐ | 对话/配方数据驱动、2D 物理/碰撞、存档;reparent/set_name Tool(接线缺口);库存前端消费;未来 Agent/LLM 接入白名单 Tool |
 
 ## 下一步行动
 
