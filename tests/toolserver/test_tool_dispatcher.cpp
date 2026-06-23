@@ -91,3 +91,57 @@ TEST_CASE("ToolDispatcher:dryRun 零副作用") {
     REQUIRE(listed["ok"] == true);
     CHECK(listed["data"]["entities"].size() == 0);
 }
+
+TEST_CASE("ToolDispatcher:body 非法 JSON → InvalidParams") {
+    Fixture f;
+    const json out = json::parse(f.dispatcher.HandleInvoke("{not json"));
+    CHECK(out["ok"] == false);
+    CHECK(out["code"] == "InvalidParams");
+}
+
+TEST_CASE("ToolDispatcher:body 非对象 → InvalidParams") {
+    Fixture f;
+    const json out = json::parse(f.dispatcher.HandleInvoke("[1,2,3]"));
+    CHECK(out["ok"] == false);
+    CHECK(out["code"] == "InvalidParams");
+}
+
+TEST_CASE("ToolDispatcher:缺 name → InvalidParams") {
+    Fixture f;
+    const json out = json::parse(f.dispatcher.HandleInvoke(R"({"params":{}})"));
+    CHECK(out["ok"] == false);
+    CHECK(out["code"] == "InvalidParams");
+}
+
+TEST_CASE("ToolDispatcher:未知 Tool → UnknownTool") {
+    Fixture f;
+    const json out = json::parse(f.dispatcher.HandleInvoke(R"({"name":"scene.no_such_tool"})"));
+    CHECK(out["ok"] == false);
+    CHECK(out["code"] == "UnknownTool");
+}
+
+TEST_CASE("ToolDispatcher:非法 role 字符串 → InvalidParams") {
+    Fixture f;
+    const json out = json::parse(
+        f.dispatcher.HandleInvoke(R"({"name":"scene.list_entities","role":"Wizard"})"));
+    CHECK(out["ok"] == false);
+    CHECK(out["code"] == "InvalidParams");
+}
+
+// 注:destroy_entity 的 schema 使用 "id"(非 "entityId");
+// PermissionDenied 在 schema 校验之前裁决,故 Agent 调用时无论参数是否存在都先返回权限错误。
+TEST_CASE("ToolDispatcher:Agent 调 destroy(EditorOnly)→ PermissionDenied") {
+    Fixture f;
+    const json out = json::parse(f.dispatcher.HandleInvoke(
+        R"({"name":"scene.destroy_entity","params":{"id":1},"role":"Agent"})"));
+    CHECK(out["ok"] == false);
+    CHECK(out["code"] == "PermissionDenied");
+}
+
+TEST_CASE("ToolDispatcher:destroy 不存在实体 → PreconditionFailed") {
+    Fixture f;
+    const json out = json::parse(f.dispatcher.HandleInvoke(
+        R"({"name":"scene.destroy_entity","params":{"id":999},"role":"Editor"})"));
+    CHECK(out["ok"] == false);
+    CHECK(out["code"] == "PreconditionFailed");
+}
