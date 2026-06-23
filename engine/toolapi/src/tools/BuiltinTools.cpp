@@ -16,6 +16,12 @@ void RegisterBuiltinTools(ToolRegistry& registry) {
     // 时间型(M8.1)
     registry.Register(MakeTimeGetTool());
     registry.Register(MakeTimeAdvanceTool());
+    // 作物型(M8.2)
+    registry.Register(MakeCropGetFieldTool());
+    registry.Register(MakeCropPlantTool());
+    registry.Register(MakeCropWaterTool());
+    registry.Register(MakeCropAdvanceDaysTool());
+    registry.Register(MakeCropHarvestTool());
 }
 
 } // namespace me::toolapi

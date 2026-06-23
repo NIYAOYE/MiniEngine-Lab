@@ -13,3 +13,9 @@
 - `year`:从 `startYear` 起算。
 
 时间是运行时状态,**不进 Command/Undo**(见 ADR 0006)。
+
+## 作物生长(M8.2)
+
+- `CropConfig` / `CropDatabase`(`CropConfig.h`):数据驱动作物表,`LoadCropDatabase(json)` 返回 `std::optional`(顶层数组、字段校验、id 唯一)。
+- `FarmField`(`FarmField.h`):以 `TileKey` 为键的作物实例网格 + 浇水驱动生长状态机。`Plant`/`Water`/`AdvanceDays`/`Harvest`/`At`/`Crops`/`Database`;值语义可拷贝供 Tool dry-run。
+- 运行时态,不进 Command/Undo(见 ADR 0007)。经 toolapi 的 `crop.*` 5 Tool 暴露。
