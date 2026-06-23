@@ -6,6 +6,7 @@
 
 namespace me::domain { class TimeSystem; } // 前置声明:仅按指针使用,避免拉入 domain 头
 namespace me::domain { class FarmField; }   // 前置声明:仅按指针使用
+namespace me::domain { class Inventory; }   // 前置声明:仅按指针使用
 
 namespace me::toolapi {
 
@@ -21,6 +22,7 @@ struct ToolContext {
     ToolInvocationLog& log;             ///< 审计日志(log.read 数据源)
     me::domain::TimeSystem* time = nullptr; ///< 可选:时间 Tool 数据源,缺省 nullptr
     me::domain::FarmField* farm = nullptr;   ///< 可选:crop Tool 数据源,缺省 nullptr
+    me::domain::Inventory* inventory = nullptr; ///< 可选:inventory Tool 数据源,缺省 nullptr
 };
 
 } // namespace me::toolapi

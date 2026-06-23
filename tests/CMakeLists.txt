@@ -38,11 +38,14 @@ add_executable(me_tests
     toolapi/test_builtin_integration.cpp
     toolapi/test_time_tools.cpp
     toolapi/test_crop_tools.cpp
+    toolapi/test_inventory_tools.cpp
     editor/test_editor_controller.cpp
     domain/test_time_config.cpp
     domain/test_time_system.cpp
     domain/test_crop_config.cpp
     domain/test_farm_field.cpp
+    domain/test_item_config.cpp
+    domain/test_inventory.cpp
     toolserver/test_tool_dispatcher.cpp
 )
 

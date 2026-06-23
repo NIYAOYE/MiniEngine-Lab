@@ -1,0 +1,7 @@
+{
+  "capacity": 36,
+  "items": [
+    { "id": "parsnip", "name": "Parsnip", "category": "crop", "maxStack": 99, "sellPrice": 35 },
+    { "id": "cauliflower", "name": "Cauliflower", "category": "crop", "maxStack": 99, "sellPrice": 175 }
+  ]
+}

@@ -1,0 +1,48 @@
+# Cross-platform line-ending policy.
+#
+# Source lives on Windows (D:\) and is built from both WSL (GCC) and Windows
+# (MSVC). Normalize every text file to LF in the repo AND the working tree so
+# WSL and Windows checkouts stay byte-identical — no CRLF/LF churn when the dev
+# host switches. See CLAUDE.md「构建环境与跨平台约束」.
+* text=auto eol=lf
+
+# --- Explicit text types (belt-and-suspenders over text=auto) ---
+*.cpp          text eol=lf
+*.h            text eol=lf
+*.hpp          text eol=lf
+*.c            text eol=lf
+*.hlsl         text eol=lf
+*.ts           text eol=lf
+*.tsx          text eol=lf
+*.js           text eol=lf
+*.json         text eol=lf
+*.tmj          text eol=lf
+*.cmake        text eol=lf
+CMakeLists.txt text eol=lf
+*.md           text eol=lf
+*.css          text eol=lf
+*.html         text eol=lf
+*.py           text eol=lf
+*.sh           text eol=lf
+
+# --- Windows-only scripts must keep CRLF to run under cmd.exe ---
+*.bat          text eol=crlf
+*.cmd          text eol=crlf
+# PowerShell tolerates LF, so it follows the global LF policy above.
+
+# --- Binary assets: never normalize line endings, never diff as text ---
+*.png          binary
+*.jpg          binary
+*.jpeg         binary
+*.gif          binary
+*.ico          binary
+*.bmp          binary
+*.tga          binary
+*.dds          binary
+*.ttf          binary
+*.otf          binary
+*.wav          binary
+*.ogg          binary
+*.mp3          binary
+*.cso          binary
+*.bin          binary

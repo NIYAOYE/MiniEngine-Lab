@@ -19,3 +19,19 @@
 - `CropConfig` / `CropDatabase`(`CropConfig.h`):数据驱动作物表,`LoadCropDatabase(json)` 返回 `std::optional`(顶层数组、字段校验、id 唯一)。
 - `FarmField`(`FarmField.h`):以 `TileKey` 为键的作物实例网格 + 浇水驱动生长状态机。`Plant`/`Water`/`AdvanceDays`/`Harvest`/`At`/`Crops`/`Database`;值语义可拷贝供 Tool dry-run。
 - 运行时态,不进 Command/Undo(见 ADR 0007)。经 toolapi 的 `crop.*` 5 Tool 暴露。
+
+## 库存/物品系统(M8.3)
+
+- `ItemConfig` / `ItemDatabase` / `InventoryConfig` / `LoadInventoryConfig`(`ItemConfig.h`):
+  数据驱动物品表,`LoadInventoryConfig(json)` 返回 `std::optional<InventoryConfig>`,
+  顶层对象/`capacity ≥ 1`/每项 `id`、`name`、`category` 非空/`maxStack ≥ 1`/
+  `sellPrice ≥ 0`/`id` 唯一全校验;`ItemDatabase` 提供 `Find(id)` 与 `Size()`。
+- `Inventory`(`Inventory.h`):固定格位网格(`std::vector<ItemStack>`,确定性遍历);
+  `Add`/`Remove` **全量或不加/不减(all-or-nothing)**,总容纳量不足时零状态变更;
+  `CanAdd(itemId, count)` 非破坏性预判,供 `crop.harvest` 原子性检查;
+  值语义可拷贝(`ItemDatabase` + `vector<ItemStack>` 均为值类型),供 Tool dry-run。
+- `FarmField::PeekHarvest(x,y)`:非破坏性收获预判(只判空/熟 + 计算 `itemId/yield`,
+  不清瓦片),供 `crop.harvest` 原子直写库存:"库满 → harvest 失败且瓦片不清"的
+  原子性由 `PeekHarvest + CanAdd` 两步保证。
+- 运行时态,不进 Command/Undo(见 ADR 0009)。经 toolapi 的 `inventory.*` 3 Tool 暴露
+  (`get`[AgentAllowed] / `add`[Automation] / `remove`[EditorOnly])。

@@ -10,6 +10,8 @@
 #include "me/core/Log.h"
 #include "me/domain/CropConfig.h"
 #include "me/domain/FarmField.h"
+#include "me/domain/Inventory.h"
+#include "me/domain/ItemConfig.h"
 #include "me/domain/TimeConfig.h"
 #include "me/domain/TimeSystem.h"
 #include "me/platform/FileSystem.h"
@@ -73,13 +75,28 @@ int main(int argc, char** argv) {
     auto cropDb = dom::LoadCropDatabase(*cropJson);
     if (!cropDb) { ME_LOG_ERROR("crops.json 语义校验失败"); return 1; }
 
+    const auto itemJson = LoadJsonFile(assetDir + "/config/items.json");
+    if (!itemJson) return 1;
+    auto invCfg = dom::LoadInventoryConfig(*itemJson);
+    if (!invCfg) { ME_LOG_ERROR("items.json 语义校验失败"); return 1; }
+
+    // 交叉软告警(不硬失败):每个作物的 harvestItemId 应能在物品表找到。
+    for (const auto& c : *cropJson) {
+        if (c.contains("harvestItemId") && c["harvestItemId"].is_string()) {
+            const std::string hid = c["harvestItemId"].get<std::string>();
+            if (invCfg->items.Find(hid) == nullptr)
+                ME_LOG_WARN("crops.json 的 harvestItemId 不在 items.json: " + hid);
+        }
+    }
+
     // —— 组装受控状态(空场景:前端经 scene.create_entity 编辑)——
     me::scene::Scene scene;
     me::command::CommandStack stack;
     api::ToolInvocationLog log;
     dom::TimeSystem time(*timeCfg);
     dom::FarmField farm(*cropDb);
-    api::ToolContext ctx{scene, stack, log, &time, &farm};
+    dom::Inventory inventory(invCfg->items, invCfg->capacity);
+    api::ToolContext ctx{scene, stack, log, &time, &farm, &inventory};
 
     api::ToolRegistry registry;
     api::RegisterBuiltinTools(registry);
