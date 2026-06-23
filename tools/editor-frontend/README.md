@@ -5,18 +5,34 @@ The engine exposes its capabilities as **13 Tools** (Query / Mutation, each with
 permission level and JSON params/result). Every interaction in this UI goes
 through a single `invoke(name, params, role, dryRun)` call.
 
-> **Transport is mocked right now.** `src/lib/toolClient.ts` keeps an in-memory
-> engine that honours the *real* contract (permission ladder, `ToolResult`
-> shape, crop/entity semantics, audit = client call history). To go live, swap
-> the bodies of `invoke()` / `listTools()` for `fetch` against
-> `http://127.0.0.1:8080` — **no UI component changes required.**
+> **Live by default.** `src/lib/toolClient.ts` calls the real headless Tool
+> server (`me_toolserver`) over HTTP — `POST /invoke` + `GET /tools` — through a
+> Vite dev proxy (`/api` → `http://127.0.0.1:8080`). An in-memory mock that
+> honours the same contract is kept as a fallback (`VITE_USE_MOCK=true`) for
+> offline UI work. Both transports return identical shapes, so **no UI component
+> changes** are needed to switch.
 
 ## Run
 
+Start the engine's Tool server first (built from the C++ tree), then the UI:
+
 ```bash
+# 1) headless Tool server (from repo root, after building me_tests/toolserver_app)
+./build-wsl/bin/toolserver_app          # listens on http://127.0.0.1:8080
+
+# 2) front-end (separate shell)
 cd tools/editor-frontend
 npm install
-npm run dev      # → http://localhost:5173
+npm run dev                              # → http://localhost:5173
+```
+
+The server starts with an **empty scene + field** (there is no tmj→Scene loader
+yet), so on first connect the UI **seeds a small demo world** via real Tool calls
+(`scene.create_entity` + `entity.set_transform`, then `crop.plant`/`water`/
+`advance_days`). To develop the UI without a running server, use the mock:
+
+```bash
+echo "VITE_USE_MOCK=true" > .env.local && npm run dev
 ```
 
 Other scripts: `npm run build` (typecheck + production build), `npm run typecheck`.
@@ -42,6 +58,11 @@ UI component library.
   names (`Player`, `Barn`) are **front-end-local** annotations (see
   `src/data/labels.ts`), never part of the contract. The Components section and
   Renderable/Collider toggles are disabled `future` placeholders.
+  - *Live gap (going-live finding):* the real `scene.create_entity` takes **no
+    params** and there is no reparent Tool, so the live-seeded demo entities are
+    **flat** (no `World→Player` hierarchy). The mock still demonstrates the
+    hierarchical shape. Future contract: a parent arg on create or a
+    `scene.set_parent` Tool.
 - **Audit** uses the front-end call history so every column (client time, role,
   params, result, duration) is honest; the engine's `log.read` is noted as the
   authoritative subset.

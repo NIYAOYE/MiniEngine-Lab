@@ -1,14 +1,21 @@
 /**
  * toolClient — the single gateway between the UI and the MiniEngine Tool API.
  *
- * RIGHT NOW: a self-contained in-memory mock that honours the *real* contract
- * (permission ranking, ToolResult shape, crop/entity semantics — brief §0).
+ * Two interchangeable transports, selected at build time by `VITE_USE_MOCK`:
  *
- * LATER: replace the bodies of `invoke()` and `listTools()` with `fetch` calls
- * to the headless Tool server (POST /invoke, GET /tools). Because every shape
- * here matches the wire contract, UI components require ZERO changes.
+ *  - HTTP (default): `fetch` against the headless Tool server (me_toolserver,
+ *    `POST /invoke` + `GET /tools`), reached through the Vite dev proxy at
+ *    `/api`. This is the real engine over the wire.
+ *  - Mock (`VITE_USE_MOCK=true`): a self-contained in-memory engine that honours
+ *    the *real* contract (permission ranking, ToolResult shape, crop/entity
+ *    semantics — brief §0). Kept for offline UI work when no server is running.
  *
- * Note on globals: this module holds mutable state because it *stands in for a
+ * Both transports return identical `ToolResult` / `ToolDefinition` shapes, so UI
+ * components require ZERO changes. The client-side audit history (richer than the
+ * engine's `log.read` subset) is recorded by the `invoke()` wrapper regardless of
+ * transport.
+ *
+ * Note on globals: the mock holds mutable state because it *stands in for a
  * remote engine process*. The "no global mutable state" rule in CLAUDE.md
  * governs the C++ engine, not a mock of a separate server.
  */
@@ -18,6 +25,7 @@ import type {
   CropTile,
   Permission,
   Role,
+  ToolCategory,
   ToolDefinition,
   ToolErrorCode,
   ToolResult,
@@ -40,6 +48,20 @@ export const CROP_DB: Readonly<Record<string, readonly string[]>> = {
 
 /** Simulated network latency so the UI shows real pending/disabled states. */
 const MOCK_LATENCY_MS = 120;
+
+// ───────────────────────────── Transport selection ─────────────────────────
+
+/**
+ * Default to the real HTTP transport; set `VITE_USE_MOCK=true` (e.g. in a
+ * `.env.local`) to fall back to the in-memory mock for offline UI development.
+ */
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
+
+/** Base path for the Tool server; Vite proxies `/api` → http://127.0.0.1:8080. */
+const API_BASE = '/api';
+
+/** Human label for the active transport, shown in the status bar. */
+export const TRANSPORT_LABEL = USE_MOCK ? '内存 mock' : 'HTTP → 127.0.0.1:8080';
 
 // ───────────────────────────── Permission model ────────────────────────────
 
@@ -625,16 +647,84 @@ export interface InvokeOptions {
 }
 
 /**
- * Invoke a Tool by name.
- *
- * MOCK: validates permission + params, mutates in-memory engine state, and
- * returns a real-shaped ToolResult. dry-run executes the handler then rolls
- * back, so callers can preview effects without committing.
- *
- * REAL: replace the body with
- *   `const r = await fetch('http://127.0.0.1:8080/invoke', { method:'POST',
- *     body: JSON.stringify({ name, params, role, dryRun }) }); return r.json();`
- * and keep the audit-recording wrapper below.
+ * MOCK transport — validates permission + params, mutates in-memory engine
+ * state, and returns a real-shaped ToolResult. dry-run executes the handler then
+ * rolls back, so callers can preview effects without committing.
+ */
+async function mockInvoke(
+  name: string,
+  params: Record<string, unknown>,
+  role: Role,
+  dryRun: boolean,
+): Promise<ToolResult> {
+  await delay(MOCK_LATENCY_MS);
+
+  const invocationId = ++invocationCounter;
+  const tool = TOOL_BY_NAME.get(name);
+  if (!tool) {
+    return { ok: false, code: 'UnknownTool', message: `未知 Tool "${name}"。`, data: {}, invocationId };
+  }
+  if (!canCall(role, tool.permission)) {
+    // Permission decided BEFORE any state change (matches engine whitelist).
+    return {
+      ok: false,
+      code: 'PermissionDenied',
+      message: `${name} ${requiredRoleLabel(tool.permission)}(当前 ${role})。`,
+      data: { required: tool.permission, role },
+      invocationId,
+    };
+  }
+  const snap = dryRun ? snapshot() : null;
+  try {
+    const data = HANDLERS[name](params);
+    return {
+      ok: true,
+      code: 'Ok',
+      message: dryRun ? `${name} dry-run 预览成功(未提交)。` : `${name} 执行成功。`,
+      data,
+      invocationId,
+    };
+  } catch (err) {
+    const te = err instanceof ToolError ? err : new ToolError('ExecutionFailed', String(err));
+    return { ok: false, code: te.code, message: te.message, data: {}, invocationId };
+  } finally {
+    if (snap !== null) restore(snap); // dry-run never commits
+  }
+}
+
+/**
+ * HTTP transport — POST the request to me_toolserver via the Vite dev proxy.
+ * The server returns a `ToolResult` JSON with HTTP 200 even for business errors,
+ * so the only failure to synthesize here is a transport (network) error.
+ */
+async function httpInvoke(
+  name: string,
+  params: Record<string, unknown>,
+  role: Role,
+  dryRun: boolean,
+): Promise<ToolResult> {
+  try {
+    const res = await fetch(`${API_BASE}/invoke`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, params, role, dryRun }),
+    });
+    return (await res.json()) as ToolResult;
+  } catch (err) {
+    return {
+      ok: false,
+      code: 'ExecutionFailed',
+      message: `网络错误:无法连接 Tool 服务器(${API_BASE})。请确认 toolserver_app 正在运行。${String(err)}`,
+      data: {},
+      invocationId: -1,
+    };
+  }
+}
+
+/**
+ * Invoke a Tool by name through the selected transport, then record the call in
+ * the client-side audit history (unless `silent`). The wire request shape
+ * `{ name, params, role, dryRun }` is identical for both transports.
  */
 export async function invoke(
   name: string,
@@ -644,53 +734,14 @@ export async function invoke(
   opts: InvokeOptions = {},
 ): Promise<ToolResult> {
   const started = performance.now();
-  await delay(MOCK_LATENCY_MS);
-
-  const invocationId = ++invocationCounter;
-  let result: ToolResult;
-
-  const tool = TOOL_BY_NAME.get(name);
-  if (!tool) {
-    result = {
-      ok: false,
-      code: 'UnknownTool',
-      message: `未知 Tool "${name}"。`,
-      data: {},
-      invocationId,
-    };
-  } else if (!canCall(role, tool.permission)) {
-    // Permission decided BEFORE any state change (matches engine whitelist).
-    result = {
-      ok: false,
-      code: 'PermissionDenied',
-      message: `${name} ${requiredRoleLabel(tool.permission)}(当前 ${role})。`,
-      data: { required: tool.permission, role },
-      invocationId,
-    };
-  } else {
-    const snap = dryRun ? snapshot() : null;
-    try {
-      const data = HANDLERS[name](params);
-      result = {
-        ok: true,
-        code: 'Ok',
-        message: dryRun ? `${name} dry-run 预览成功(未提交)。` : `${name} 执行成功。`,
-        data,
-        invocationId,
-      };
-    } catch (err) {
-      const te = err instanceof ToolError ? err : new ToolError('ExecutionFailed', String(err));
-      result = { ok: false, code: te.code, message: te.message, data: {}, invocationId };
-    } finally {
-      if (snap !== null) restore(snap); // dry-run never commits
-    }
-  }
-
+  const result = USE_MOCK
+    ? await mockInvoke(name, params, role, dryRun)
+    : await httpInvoke(name, params, role, dryRun);
   const durationMs = Math.round((performance.now() - started) * 10) / 10;
 
   if (!opts.silent) {
     pushHistory({
-      id: invocationId,
+      id: ++invocationCounter,
       timestamp: Date.now(),
       tool: name,
       role,
@@ -707,9 +758,86 @@ export async function invoke(
 
 /**
  * List the available Tools and their contract metadata.
- * REAL: `const r = await fetch('http://127.0.0.1:8080/tools'); return r.json();`
+ *
+ * The HTTP `/tools` endpoint returns `{ name, category, permission, paramsSchema }`
+ * (no `description` — those are front-end-local UI strings), so we re-attach the
+ * local description by name. Falls back to the bundled 13-Tool contract if the
+ * server is unreachable, so the overview panel still renders.
  */
 export async function listTools(): Promise<ToolDefinition[]> {
-  await delay(MOCK_LATENCY_MS / 2);
-  return TOOLS.map((t) => ({ ...t }));
+  if (USE_MOCK) {
+    await delay(MOCK_LATENCY_MS / 2);
+    return TOOLS.map((t) => ({ ...t }));
+  }
+  try {
+    const res = await fetch(`${API_BASE}/tools`);
+    const raw = (await res.json()) as Array<{
+      name: string;
+      category: ToolCategory;
+      permission: Permission;
+      paramsSchema?: Record<string, unknown>;
+    }>;
+    return raw.map((t) => ({
+      name: t.name,
+      category: t.category,
+      permission: t.permission,
+      paramsSchema: t.paramsSchema ?? {},
+      description: TOOL_BY_NAME.get(t.name)?.description ?? '',
+    }));
+  } catch (err) {
+    console.error('listTools 失败,回退本地契约元数据:', err);
+    return TOOLS.map((t) => ({ ...t }));
+  }
+}
+
+/**
+ * Seed an equivalent-to-mock demo world on a FRESH (empty) engine.
+ *
+ * The headless server starts with an empty scene + field (no tmj→Scene loader
+ * yet), so a freshly connected client would see nothing. This populates a small
+ * demo via real Tool calls so "connect = content". No-op in mock mode (the mock
+ * starts pre-seeded), because callers only invoke it when the world is empty.
+ *
+ * Contract gaps surfaced by going live (recorded, not worked around):
+ *  - `scene.create_entity` takes no params and there is no reparent Tool, so the
+ *    seeded entities are FLAT (no World→Player hierarchy). Friendly labels still
+ *    map by id (1..6) because a fresh scene assigns ids in creation order.
+ *  - Crop stages can't be set directly (`crop.advance_days` is field-wide), so we
+ *    plant + water + advance one day for visible stage/watered variety.
+ */
+export async function seedDemoWorld(): Promise<void> {
+  const role: Role = 'Editor';
+  const silent: InvokeOptions = { silent: true };
+
+  // 6 flat entities; ids 1..6 (creation order) map to LOCAL_LABELS.
+  const transforms: Array<{ position: Vec2; rotation: number; scale: Vec2 }> = [
+    { position: { x: 0, y: 0 }, rotation: 0, scale: { x: 1, y: 1 } },
+    { position: { x: 5, y: 3 }, rotation: 0, scale: { x: 1, y: 1 } },
+    { position: { x: 12, y: 4 }, rotation: 0, scale: { x: 1, y: 1 } },
+    { position: { x: 12, y: 6 }, rotation: 90, scale: { x: 1, y: 1 } },
+    { position: { x: 13, y: 4 }, rotation: 0, scale: { x: 1, y: 1 } },
+    { position: { x: 2, y: 8 }, rotation: 0, scale: { x: 3, y: 3 } },
+  ];
+  for (const t of transforms) {
+    const created = await invoke('scene.create_entity', {}, role, false, silent);
+    const id = created.data?.id;
+    if (typeof id === 'number') {
+      await invoke('entity.set_transform', { id, ...t }, role, false, silent);
+    }
+  }
+
+  // A handful of crops; water three and advance one day for visible variety.
+  const plant = (tileX: number, tileY: number, cropId: string) =>
+    invoke('crop.plant', { tileX, tileY, cropId }, role, false, silent);
+  const water = (tileX: number, tileY: number) =>
+    invoke('crop.water', { tileX, tileY }, role, false, silent);
+  await plant(0, 0, 'parsnip');
+  await plant(1, 0, 'parsnip');
+  await plant(2, 0, 'parsnip');
+  await plant(0, 1, 'cauliflower');
+  await plant(1, 1, 'cauliflower');
+  await water(0, 0);
+  await water(1, 0);
+  await water(2, 0);
+  await invoke('crop.advance_days', { days: 1 }, role, false, silent);
 }
