@@ -43,6 +43,7 @@ add_executable(me_tests
     domain/test_time_system.cpp
     domain/test_crop_config.cpp
     domain/test_farm_field.cpp
+    domain/test_item_config.cpp
     toolserver/test_tool_dispatcher.cpp
 )
 
