@@ -197,3 +197,30 @@ TEST_CASE("ToolDispatcher:HandleListTools 返回 13 条带元数据") {
     REQUIRE(byName.contains("scene.destroy_entity"));
     CHECK(byName["scene.destroy_entity"]["permission"] == "EditorOnly");
 }
+
+TEST_CASE("ToolDispatcher:time.advance 推进后 time.get 反映变化") {
+    Fixture f;
+    const json before = json::parse(f.dispatcher.HandleInvoke(R"({"name":"time.get"})"));
+    REQUIRE(before["ok"] == true);
+    const int beforeMinute = before["data"]["minuteOfDay"].get<int>();
+
+    const json adv = json::parse(
+        f.dispatcher.HandleInvoke(R"({"name":"time.advance","params":{"minutes":10}})"));
+    REQUIRE(adv["ok"] == true);
+
+    const json after = json::parse(f.dispatcher.HandleInvoke(R"({"name":"time.get"})"));
+    REQUIRE(after["ok"] == true);
+    CHECK(after["data"]["minuteOfDay"].get<int>() != beforeMinute);
+}
+
+TEST_CASE("ToolDispatcher:crop.plant 后 crop.get_field 可见") {
+    Fixture f;
+    const json plant = json::parse(f.dispatcher.HandleInvoke(
+        R"({"name":"crop.plant","params":{"tileX":2,"tileY":3,"cropId":"parsnip"}})"));
+    REQUIRE(plant["ok"] == true);
+
+    const json field = json::parse(f.dispatcher.HandleInvoke(R"({"name":"crop.get_field"})"));
+    REQUIRE(field["ok"] == true);
+    REQUIRE(field["data"]["crops"].size() == 1);
+    CHECK(field["data"]["crops"][0]["cropId"] == "parsnip");
+}
