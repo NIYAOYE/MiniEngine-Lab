@@ -1,6 +1,7 @@
 #include <memory>
 
 #include "me/domain/FarmField.h"
+#include "me/domain/Inventory.h"
 #include "me/toolapi/ToolContext.h"
 #include "me/toolapi/tools/BuiltinTools.h"
 
@@ -185,21 +186,27 @@ public:
         if (ctx.farm == nullptr)
             return ToolResult::Error(ToolErrorCode::PreconditionFailed,
                                      "no farm field wired into ToolContext");
-        me::domain::FarmField preview = *ctx.farm;
-        return apply(preview, p);
+        me::domain::FarmField farmCopy = *ctx.farm; // 值拷贝:零副作用
+        if (ctx.inventory != nullptr) {
+            me::domain::Inventory invCopy = *ctx.inventory;
+            return apply(farmCopy, &invCopy, p);
+        }
+        return apply(farmCopy, nullptr, p);
     }
     ToolResult run(ToolContext& ctx, const nlohmann::json& p) const override {
         if (ctx.farm == nullptr)
             return ToolResult::Error(ToolErrorCode::PreconditionFailed,
                                      "no farm field wired into ToolContext");
-        return apply(*ctx.farm, p);
+        return apply(*ctx.farm, ctx.inventory, p);
     }
 private:
-    static ToolResult apply(me::domain::FarmField& farm, const nlohmann::json& p) {
+    // 原子收获:先预判库存可容纳,再清瓦片入库;库满则瓦片不清。
+    static ToolResult apply(me::domain::FarmField& farm, me::domain::Inventory* inv,
+                            const nlohmann::json& p) {
         const int x = p["tileX"].get<int>();
         const int y = p["tileY"].get<int>();
-        const me::domain::HarvestResult h = farm.Harvest(x, y);
-        switch (h.status) {
+        const me::domain::HarvestResult peek = farm.PeekHarvest(x, y);
+        switch (peek.status) {
             case me::domain::HarvestStatus::EmptyTile:
                 return ToolResult::Error(ToolErrorCode::PreconditionFailed,
                                          "no crop on tile to harvest");
@@ -209,7 +216,17 @@ private:
             case me::domain::HarvestStatus::Ok:
                 break;
         }
-        return ToolResult::Success({{"itemId", h.itemId}, {"count", h.count}});
+        if (inv != nullptr && !inv->CanAdd(peek.itemId, peek.count))
+            return ToolResult::Error(ToolErrorCode::PreconditionFailed, "inventory full");
+
+        farm.Harvest(x, y); // 状态 Ok,清瓦片
+        bool added = false;
+        if (inv != nullptr) {
+            inv->Add(peek.itemId, peek.count); // CanAdd 已保证成功
+            added = true;
+        }
+        return ToolResult::Success(
+            {{"itemId", peek.itemId}, {"count", peek.count}, {"addedToInventory", added}});
     }
 };
 
