@@ -41,6 +41,7 @@ add_subdirectory(engine/toolapi)
 add_subdirectory(engine/renderer)
 add_subdirectory(engine/editor)
 add_subdirectory(engine/domain)
+add_subdirectory(engine/toolserver)
 
 if(ME_BUILD_TESTS)
     add_subdirectory(tests)
